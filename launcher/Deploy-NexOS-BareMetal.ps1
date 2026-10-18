@@ -98,7 +98,10 @@ Copy-Item -Path "$sourceDir\build\bootx64.efi" -Destination "${nexosLetter}:\boo
 Copy-Item -Path "$sourceDir\build\grub.cfg" -Destination "${nexosLetter}:\EFI\BOOT\grub.cfg" -Force -ErrorAction SilentlyContinue
 Copy-Item -Path "$sourceDir\build\grub.cfg" -Destination "${nexosLetter}:\grub.cfg" -Force -ErrorAction SilentlyContinue
 
-Copy-Item -Path "$sourceDir\shell" -Destination "${nexosLetter}:\opt\nexos\shell" -Recurse -Force -ErrorAction SilentlyContinue
+# Copy core shell source (skip bulky node_modules and dist)
+Get-ChildItem -Path "$sourceDir\shell" -Exclude "node_modules", "dist", ".git" | ForEach-Object {
+    Copy-Item -Path $_.FullName -Destination "${nexosLetter}:\opt\nexos\shell" -Recurse -Force -ErrorAction SilentlyContinue
+}
 Copy-Item -Path "$sourceDir\scripts" -Destination "${nexosLetter}:\opt\nexos\scripts" -Recurse -Force -ErrorAction SilentlyContinue
 Copy-Item -Path "$sourceDir\config" -Destination "${nexosLetter}:\opt\nexos\config" -Recurse -Force -ErrorAction SilentlyContinue
 
