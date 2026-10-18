@@ -349,10 +349,19 @@ HOSTS
 # ============================================================
 # USER
 # ============================================================
-useradd -m -s /bin/bash -G sudo,audio,video,plugdev,netdev nexos 2>/dev/null || true
+# Create groups that may not exist yet
+for grp in sudo audio video plugdev netdev cdrom; do
+    groupadd -f "$grp" 2>/dev/null || true
+done
+# Create user
+useradd -m -s /bin/bash nexos 2>/dev/null || true
+# Add to groups one by one (safe — skips missing groups)
+for grp in sudo audio video plugdev netdev cdrom; do
+    usermod -aG "$grp" nexos 2>/dev/null || true
+done
 # Set password via hash (chpasswd fails in chroot without full PAM)
 NEXOS_HASH=$(openssl passwd -6 'nexos')
-usermod -p "${NEXOS_HASH}" nexos
+usermod -p "${NEXOS_HASH}" nexos 2>/dev/null || true
 echo "nexos ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/nexos
 chmod 440 /etc/sudoers.d/nexos
 
