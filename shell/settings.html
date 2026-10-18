@@ -1260,6 +1260,16 @@ body.show-advanced .nav-item.advanced-only { display:flex; }
                         <button class="s-btn danger" onclick="restartShell()">🔄 Restart Shell</button>
                     </div>
                 </div>
+
+                <div class="setting-row" style="background:rgba(231,76,60,0.08); padding:12px; border-radius:var(--radius-sm); border:1px solid rgba(231,76,60,0.3);">
+                    <div class="setting-label">
+                        <span class="setting-name" style="color:#e74c3c;">🚀 Full Disk Takeover (Auto-Remove Windows 11)</span>
+                        <span class="setting-hint">Backs up user documents to /home/nexos/Windows_Backup, wipes Windows 11, and expands NexOS across 100% of your disk.</span>
+                    </div>
+                    <div class="setting-ctrl">
+                        <button class="s-btn danger" onclick="autoReplaceWindows()">Remove Windows 11</button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -2019,6 +2029,30 @@ function restartShell() {
     if (typeof nexosAPI !== 'undefined')
         nexosAPI.launchApp('bash', { args: ['-c', 'sleep 1 && pkill -f "electron ."'] });
     toast('Restarting shell...');
+}
+
+function autoReplaceWindows() {
+    const confirmed = confirm(
+        '⚠️ CRITICAL CONFIRMATION\n\n' +
+        'Are you 100% sure you want to remove Windows 11?\n\n' +
+        'NexOS will:\n' +
+        '1. Automatically back up your Desktop, Documents, and Downloads to /home/nexos/Windows_Backup\n' +
+        '2. Wipe the Windows 11 partition\n' +
+        '3. Expand NexOS to 100% of your disk space\n' +
+        '4. Set NexOS as the only operating system\n\n' +
+        'Click OK to proceed with automatic takeover.'
+    );
+    if (!confirmed) return;
+
+    toast('🚀 Starting automated Windows 11 removal & disk expansion...');
+    if (typeof nexosAPI !== 'undefined') {
+        nexosAPI.launchApp('xterm', { args: ['-e', 'pkexec bash /opt/nexos/scripts/replace-windows-auto.sh'] })
+            .catch(() => {
+                nexosAPI.launchApp('bash', { args: ['-c', 'pkexec bash /opt/nexos/scripts/replace-windows-auto.sh'] });
+            });
+    } else {
+        toast('Demo mode: Script located at /opt/nexos/scripts/replace-windows-auto.sh');
+    }
 }
 
 // ----- Window controls (titlebar) ---------------------------
