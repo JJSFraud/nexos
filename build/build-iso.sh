@@ -350,7 +350,9 @@ HOSTS
 # USER
 # ============================================================
 useradd -m -s /bin/bash -G sudo,audio,video,plugdev,netdev nexos 2>/dev/null || true
-echo "nexos:nexos" | chpasswd
+# Set password via hash (chpasswd fails in chroot without full PAM)
+NEXOS_HASH=$(openssl passwd -6 'nexos')
+usermod -p "${NEXOS_HASH}" nexos
 echo "nexos ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/nexos
 chmod 440 /etc/sudoers.d/nexos
 
