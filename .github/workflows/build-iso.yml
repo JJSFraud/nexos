@@ -1,0 +1,56 @@
+name: Build NexOS ISO
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:   # lets you trigger manually from GitHub website
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            debootstrap \
+            squashfs-tools \
+            xorriso \
+            grub-pc-bin \
+            grub-efi-amd64-bin \
+            grub-common \
+            grub2-common \
+            mtools \
+            dosfstools \
+            genisoimage \
+            curl \
+            wget \
+            git \
+            gnupg \
+            ca-certificates \
+            apt-transport-https
+
+      - name: Make scripts executable
+        run: chmod +x build/build-iso.sh build/install-deps.sh scripts/*.sh
+
+      - name: Build NexOS ISO
+        run: sudo bash build/build-iso.sh
+        env:
+          DEBIAN_FRONTEND: noninteractive
+
+      - name: Upload ISO artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NexOS-demo-iso
+          path: NexOS-0.1.0-demo.iso
+          retention-days: 7
+
+      - name: Show ISO info
+        run: |
+          echo "ISO size: $(du -sh NexOS-0.1.0-demo.iso | cut -f1)"
+          echo "SHA256: $(sha256sum NexOS-0.1.0-demo.iso)"

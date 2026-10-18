@@ -1,0 +1,1452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NexOS Desktop</title>
+<style>
+/* =========================================================
+   NexOS Desktop Shell — index.html
+   Windows 12 + macOS hybrid aesthetics
+   Full glassmorphism, smooth animations, CSS custom props
+   ========================================================= */
+
+/* ---------- CSS Custom Properties (Themes) ---------- */
+:root {
+    /* Default: Blue */
+    --accent:          #4a9eff;
+    --accent-light:    #74b9ff;
+    --accent-dark:     #2980d9;
+    --accent-glow:     rgba(74, 158, 255, 0.35);
+    --accent-rgb:      74, 158, 255;
+
+    --bg-primary:      rgba(15, 15, 35, 0.85);
+    --bg-secondary:    rgba(20, 20, 50, 0.75);
+    --bg-tertiary:     rgba(25, 25, 60, 0.65);
+    --bg-glass:        rgba(255, 255, 255, 0.06);
+    --bg-glass-hover:  rgba(255, 255, 255, 0.12);
+    --bg-glass-active: rgba(255, 255, 255, 0.18);
+
+    --border-glass:    rgba(255, 255, 255, 0.12);
+    --border-accent:   rgba(74, 158, 255, 0.4);
+
+    --text-primary:    rgba(255, 255, 255, 0.95);
+    --text-secondary:  rgba(255, 255, 255, 0.65);
+    --text-muted:      rgba(255, 255, 255, 0.35);
+
+    --shadow-sm:       0 2px 12px rgba(0,0,0,0.4);
+    --shadow-md:       0 8px 32px rgba(0,0,0,0.5);
+    --shadow-lg:       0 20px 60px rgba(0,0,0,0.6);
+    --shadow-accent:   0 4px 20px var(--accent-glow);
+
+    --radius-sm:  8px;
+    --radius-md:  14px;
+    --radius-lg:  20px;
+    --radius-xl:  28px;
+    --radius-pill: 9999px;
+
+    --blur-sm:  blur(8px);
+    --blur-md:  blur(18px);
+    --blur-lg:  blur(32px);
+
+    --taskbar-h:      60px;
+    --taskbar-y:      bottom;
+    --taskbar-bg:     rgba(12, 12, 28, 0.78);
+    --transition-fast: 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+    --transition-med:  0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    --transition-slow: 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+
+    --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
+}
+
+/* --- Theme: Purple-Blue --- */
+[data-theme="purple-blue"] {
+    --accent:        #9b59ff;
+    --accent-light:  #b97cff;
+    --accent-dark:   #7b3fd9;
+    --accent-glow:   rgba(155, 89, 255, 0.35);
+    --accent-rgb:    155, 89, 255;
+    --bg-primary:    rgba(18, 10, 40, 0.85);
+    --bg-secondary:  rgba(25, 15, 55, 0.75);
+}
+
+/* --- Theme: Green --- */
+[data-theme="green"] {
+    --accent:        #27ae60;
+    --accent-light:  #2ecc71;
+    --accent-dark:   #1e8449;
+    --accent-glow:   rgba(39, 174, 96, 0.35);
+    --accent-rgb:    39, 174, 96;
+    --bg-primary:    rgba(8, 20, 15, 0.85);
+    --bg-secondary:  rgba(10, 28, 20, 0.75);
+}
+
+/* --- Theme: Cyan --- */
+[data-theme="cyan"] {
+    --accent:        #00cec9;
+    --accent-light:  #00e5e0;
+    --accent-dark:   #00a8a3;
+    --accent-glow:   rgba(0, 206, 201, 0.35);
+    --accent-rgb:    0, 206, 201;
+    --bg-primary:    rgba(5, 20, 25, 0.85);
+    --bg-secondary:  rgba(8, 28, 35, 0.75);
+}
+
+/* --- Mac taskbar style --- */
+body[data-taskbar="mac"] #taskbar {
+    top: 0;
+    bottom: auto;
+    border-radius: 0;
+    width: 100%;
+    flex-direction: row;
+    justify-content: flex-start;
+    height: 30px;
+    padding: 0 12px;
+    gap: 0;
+}
+body[data-taskbar="mac"] #taskbar-center-icons { display: none; }
+body[data-taskbar="mac"] #mac-menu { display: flex; }
+body[data-taskbar="mac"] #desktop { top: 30px; height: calc(100vh - 30px); }
+
+/* =========================================================
+   BASE RESET & BODY
+   ========================================================= */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+    width: 100vw; height: 100vh;
+    overflow: hidden;
+    font-family: var(--font-ui);
+    color: var(--text-primary);
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-glass); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+/* =========================================================
+   WALLPAPER / DESKTOP LAYER
+   ========================================================= */
+#wallpaper-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    background: linear-gradient(
+        135deg,
+        #050510 0%,
+        #0d0d2b 20%,
+        #0a1628 40%,
+        #050515 60%,
+        #0d0a25 80%,
+        #080820 100%
+    );
+    transition: background var(--transition-slow);
+}
+
+#wallpaper-layer::before {
+    content: '';
+    position: absolute; inset: 0;
+    background:
+        radial-gradient(ellipse at 20% 30%, rgba(74, 158, 255, 0.12) 0%, transparent 55%),
+        radial-gradient(ellipse at 80% 70%, rgba(155, 89, 255, 0.10) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 100%, rgba(0, 206, 201, 0.07) 0%, transparent 45%);
+    animation: nebula-drift 20s ease-in-out infinite alternate;
+}
+
+@keyframes nebula-drift {
+    0%   { transform: scale(1) translate(0, 0); }
+    100% { transform: scale(1.05) translate(1%, -1%); }
+}
+
+#wallpaper-image {
+    position: absolute; inset: 0;
+    background-size: cover; background-position: center;
+    opacity: 0; transition: opacity 0.8s ease;
+}
+#wallpaper-image.visible { opacity: 1; }
+
+#wallpaper-video {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: cover; z-index: 1;
+    display: none;
+}
+#wallpaper-video.active { display: block; }
+
+/* =========================================================
+   DESKTOP (click surface above wallpaper)
+   ========================================================= */
+#desktop {
+    position: fixed;
+    inset: 0;
+    bottom: var(--taskbar-h);
+    z-index: 10;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, 90px);
+    grid-template-rows: repeat(auto-fill, 90px);
+    gap: 4px;
+    padding: 12px;
+    align-content: start;
+}
+
+.desktop-icon {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 6px; padding: 8px 4px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: background var(--transition-fast), transform var(--transition-fast);
+    width: 80px; height: 80px;
+}
+.desktop-icon:hover {
+    background: var(--bg-glass-hover);
+    transform: scale(1.05);
+}
+.desktop-icon:active {
+    background: var(--bg-glass-active);
+    transform: scale(0.97);
+}
+.desktop-icon .icon-img {
+    font-size: 36px; line-height: 1;
+    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5));
+}
+.desktop-icon .icon-label {
+    font-size: 11px; font-weight: 500;
+    color: var(--text-primary);
+    text-align: center; max-width: 76px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+}
+.desktop-icon.selected {
+    background: rgba(var(--accent-rgb), 0.2);
+    outline: 1px solid var(--border-accent);
+}
+
+/* =========================================================
+   TASKBAR (bottom, Win12 style)
+   ========================================================= */
+#taskbar {
+    position: fixed;
+    bottom: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(calc(100% - 24px), 800px);
+    height: var(--taskbar-h);
+    z-index: 1000;
+    display: flex; align-items: center;
+    gap: 8px; padding: 0 14px;
+    background: var(--taskbar-bg);
+    backdrop-filter: var(--blur-lg) saturate(1.8);
+    -webkit-backdrop-filter: var(--blur-lg) saturate(1.8);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255,255,255,0.08);
+    transition: width var(--transition-med), transform var(--transition-med), opacity var(--transition-med);
+}
+
+/* Stretch to full-width when set to classic Win style */
+body[data-taskbar="win-classic"] #taskbar {
+    left: 0; transform: none;
+    width: 100%; border-radius: 0; bottom: 0;
+}
+
+/* ---------- Start / Launcher Button ---------- */
+#start-btn {
+    width: 40px; height: 40px;
+    border-radius: var(--radius-md);
+    background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+    border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+    box-shadow: var(--shadow-accent);
+    color: #fff;
+    outline: none;
+    position: relative; overflow: hidden;
+}
+#start-btn::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.2), transparent);
+    opacity: 0; transition: opacity var(--transition-fast);
+}
+#start-btn:hover { transform: scale(1.08); box-shadow: 0 6px 24px var(--accent-glow); }
+#start-btn:hover::before { opacity: 1; }
+#start-btn:active { transform: scale(0.96); }
+
+.start-logo {
+    width: 22px; height: 22px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 2px;
+}
+.start-logo span {
+    background: #fff; border-radius: 2px;
+    display: block;
+}
+
+/* ---------- Taskbar Separator ---------- */
+.tb-sep {
+    width: 1px; height: 32px;
+    background: var(--border-glass);
+    flex-shrink: 0;
+}
+
+/* ---------- Center Icons (pinned + open apps) ---------- */
+#taskbar-center-icons {
+    flex: 1;
+    display: flex; align-items: center; justify-content: center;
+    gap: 4px;
+}
+
+.tb-icon {
+    position: relative;
+    width: 42px; height: 42px;
+    border-radius: var(--radius-md);
+    background: transparent;
+    border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    color: var(--text-primary);
+    transition: background var(--transition-fast), transform var(--transition-fast);
+    flex-shrink: 0;
+}
+.tb-icon:hover { background: var(--bg-glass-hover); transform: translateY(-3px) scale(1.1); }
+.tb-icon:active { transform: translateY(0) scale(0.95); }
+.tb-icon.active { background: var(--bg-glass-active); }
+.tb-icon.active::after {
+    content: '';
+    position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%);
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 6px var(--accent-glow);
+}
+.tb-icon[data-tooltip]::before {
+    content: attr(data-tooltip);
+    position: absolute; bottom: 52px; left: 50%; transform: translateX(-50%);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 11px; font-weight: 500;
+    padding: 4px 10px; border-radius: var(--radius-sm);
+    border: 1px solid var(--border-glass);
+    white-space: nowrap; pointer-events: none;
+    opacity: 0; transition: opacity 0.15s;
+    backdrop-filter: var(--blur-sm);
+}
+.tb-icon:hover[data-tooltip]::before { opacity: 1; }
+
+/* ---------- System Tray (right side) ---------- */
+#system-tray {
+    display: flex; align-items: center; gap: 6px;
+    padding: 0 6px; flex-shrink: 0;
+}
+
+.tray-item {
+    display: flex; align-items: center; gap: 4px;
+    padding: 4px 8px; border-radius: var(--radius-sm);
+    font-size: 12px; font-weight: 500;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background var(--transition-fast), color var(--transition-fast);
+}
+.tray-item:hover { background: var(--bg-glass-hover); color: var(--text-primary); }
+.tray-icon { font-size: 14px; }
+
+/* ---------- Clock ---------- */
+#clock-block {
+    display: flex; flex-direction: column;
+    align-items: flex-end; justify-content: center;
+    gap: 1px; cursor: default;
+    padding: 0 4px;
+}
+#clock-time {
+    font-size: 13px; font-weight: 600; letter-spacing: 0.3px;
+    color: var(--text-primary); line-height: 1.2;
+}
+#clock-date {
+    font-size: 10px; color: var(--text-secondary); line-height: 1.2;
+}
+
+/* ---------- Mac top menu bar ---------- */
+#mac-menu {
+    display: none;
+    align-items: center; gap: 18px;
+    flex: 1;
+}
+#mac-apple-logo { font-size: 16px; margin-right: 6px; }
+.mac-menu-item {
+    font-size: 13px; font-weight: 500;
+    color: var(--text-primary); cursor: pointer;
+    padding: 2px 8px; border-radius: 5px;
+    transition: background var(--transition-fast);
+}
+.mac-menu-item:hover { background: var(--bg-glass-hover); }
+.mac-menu-item.bold { font-weight: 700; }
+
+/* =========================================================
+   APP LAUNCHER OVERLAY
+   ========================================================= */
+#launcher-overlay {
+    position: fixed; inset: 0;
+    z-index: 2000;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    background: rgba(5, 5, 20, 0.65);
+    backdrop-filter: var(--blur-lg);
+    -webkit-backdrop-filter: var(--blur-lg);
+    opacity: 0; pointer-events: none;
+    transition: opacity var(--transition-med);
+}
+#launcher-overlay.open { opacity: 1; pointer-events: all; }
+
+#launcher-panel {
+    width: min(720px, 90vw);
+    max-height: 80vh;
+    display: flex; flex-direction: column;
+    gap: 16px;
+    background: rgba(15, 15, 35, 0.85);
+    backdrop-filter: var(--blur-lg) saturate(1.6);
+    -webkit-backdrop-filter: var(--blur-lg) saturate(1.6);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-xl);
+    padding: 24px;
+    box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255,255,255,0.06);
+    transform: scale(0.96) translateY(10px);
+    transition: transform var(--transition-med);
+}
+#launcher-overlay.open #launcher-panel { transform: scale(1) translateY(0); }
+
+/* Search bar */
+#launcher-search-wrap {
+    position: relative; display: flex; align-items: center;
+}
+#launcher-search-icon {
+    position: absolute; left: 14px;
+    font-size: 16px; color: var(--text-muted);
+}
+#launcher-search {
+    width: 100%; padding: 12px 14px 12px 42px;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-pill);
+    color: var(--text-primary);
+    font-size: 15px; font-family: var(--font-ui);
+    outline: none;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+#launcher-search:focus {
+    border-color: var(--border-accent);
+    box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.15);
+}
+#launcher-search::placeholder { color: var(--text-muted); }
+
+/* Category tabs */
+#launcher-categories {
+    display: flex; gap: 6px; flex-wrap: wrap;
+}
+.cat-btn {
+    padding: 5px 14px; border-radius: var(--radius-pill);
+    background: var(--bg-glass); border: 1px solid var(--border-glass);
+    color: var(--text-secondary); font-size: 12px; font-weight: 500;
+    cursor: pointer; transition: all var(--transition-fast);
+}
+.cat-btn:hover { background: var(--bg-glass-hover); color: var(--text-primary); }
+.cat-btn.active {
+    background: var(--accent); border-color: var(--accent);
+    color: #fff; box-shadow: var(--shadow-accent);
+}
+
+/* App grid */
+#launcher-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+    gap: 8px;
+    overflow-y: auto; padding-right: 4px;
+    max-height: 45vh;
+}
+
+.launcher-app {
+    display: flex; flex-direction: column;
+    align-items: center; gap: 8px;
+    padding: 16px 8px 12px;
+    border-radius: var(--radius-lg);
+    background: var(--bg-glass);
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    text-align: center;
+}
+.launcher-app:hover {
+    background: var(--bg-glass-hover);
+    border-color: var(--border-accent);
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-md);
+}
+.launcher-app:active { transform: translateY(0) scale(0.97); }
+.launcher-app-icon { font-size: 34px; line-height: 1; }
+.launcher-app-name {
+    font-size: 11.5px; font-weight: 500;
+    color: var(--text-secondary); line-height: 1.3;
+    max-width: 80px; overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* Recent label */
+#launcher-recent-label {
+    font-size: 11px; font-weight: 600;
+    color: var(--text-muted); text-transform: uppercase;
+    letter-spacing: 1px; padding: 0 2px;
+}
+
+/* =========================================================
+   NOTIFICATION SYSTEM
+   ========================================================= */
+#notification-area {
+    position: fixed; top: 20px; right: 20px;
+    z-index: 5000;
+    display: flex; flex-direction: column; gap: 10px;
+    pointer-events: none;
+    width: 320px;
+}
+
+.notification-card {
+    background: var(--bg-primary);
+    backdrop-filter: var(--blur-md) saturate(1.5);
+    -webkit-backdrop-filter: var(--blur-md) saturate(1.5);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-lg);
+    padding: 14px 16px;
+    box-shadow: var(--shadow-md);
+    pointer-events: all; cursor: pointer;
+    display: flex; gap: 12px; align-items: flex-start;
+    animation: slide-in-right 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    position: relative; overflow: hidden;
+}
+.notification-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, var(--accent), transparent);
+}
+.notification-card.error::before { background: linear-gradient(90deg, #e74c3c, transparent); }
+.notification-card.warning::before { background: linear-gradient(90deg, #f39c12, transparent); }
+
+@keyframes slide-in-right {
+    from { transform: translateX(110%); opacity: 0; }
+    to   { transform: translateX(0);    opacity: 1; }
+}
+
+.notif-icon { font-size: 20px; flex-shrink: 0; }
+.notif-body { flex: 1; }
+.notif-title { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.notif-text  { font-size: 12px; color: var(--text-secondary); margin-top: 2px; line-height: 1.4; }
+.notif-close {
+    font-size: 14px; color: var(--text-muted);
+    cursor: pointer; padding: 0 2px; flex-shrink: 0;
+    transition: color var(--transition-fast);
+}
+.notif-close:hover { color: var(--text-primary); }
+.notif-progress {
+    position: absolute; bottom: 0; left: 0;
+    height: 2px; background: var(--accent);
+    animation: notif-shrink linear forwards;
+}
+@keyframes notif-shrink {
+    from { width: 100%; }
+    to   { width: 0%; }
+}
+
+/* =========================================================
+   CONTEXT MENU (right-click on desktop)
+   ========================================================= */
+#context-menu {
+    position: fixed;
+    z-index: 9000;
+    background: var(--bg-primary);
+    backdrop-filter: var(--blur-md) saturate(1.6);
+    -webkit-backdrop-filter: var(--blur-md) saturate(1.6);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-md);
+    padding: 6px;
+    min-width: 180px;
+    box-shadow: var(--shadow-lg);
+    display: none;
+    animation: fade-scale-in 0.15s ease forwards;
+}
+#context-menu.visible { display: block; }
+
+@keyframes fade-scale-in {
+    from { opacity: 0; transform: scale(0.94) translateY(-4px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.ctx-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px; border-radius: var(--radius-sm);
+    font-size: 13px; color: var(--text-primary);
+    cursor: pointer; transition: background var(--transition-fast);
+}
+.ctx-item:hover { background: var(--bg-glass-hover); }
+.ctx-item .ctx-icon { font-size: 15px; width: 18px; text-align: center; }
+.ctx-sep { height: 1px; background: var(--border-glass); margin: 4px 8px; }
+.ctx-item.danger { color: #e74c3c; }
+.ctx-item.danger:hover { background: rgba(231, 76, 60, 0.15); }
+
+/* =========================================================
+   SETTINGS PANEL (inline quick settings)
+   ========================================================= */
+#quick-settings-panel {
+    position: fixed; right: 12px; bottom: 80px;
+    width: 340px;
+    background: var(--bg-primary);
+    backdrop-filter: var(--blur-lg) saturate(1.6);
+    -webkit-backdrop-filter: var(--blur-lg) saturate(1.6);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-xl);
+    padding: 20px;
+    box-shadow: var(--shadow-lg);
+    z-index: 3000;
+    display: none;
+    flex-direction: column; gap: 16px;
+    animation: fade-up 0.25s ease forwards;
+}
+#quick-settings-panel.open { display: flex; }
+
+@keyframes fade-up {
+    from { opacity: 0; transform: translateY(10px) scale(0.98); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.qs-header {
+    display: flex; align-items: center; justify-content: space-between;
+}
+.qs-title { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.qs-btn-row {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+}
+.qs-btn {
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+    padding: 10px 8px; border-radius: var(--radius-md);
+    background: var(--bg-glass); border: 1px solid transparent;
+    cursor: pointer; transition: all var(--transition-fast);
+    font-size: 20px; color: var(--text-secondary);
+}
+.qs-btn:hover { background: var(--bg-glass-hover); color: var(--text-primary); transform: translateY(-2px); }
+.qs-btn.active { background: rgba(var(--accent-rgb), 0.2); border-color: var(--border-accent); color: var(--accent); }
+.qs-btn-label { font-size: 10px; font-weight: 500; }
+
+.qs-slider-wrap { display: flex; flex-direction: column; gap: 6px; }
+.qs-slider-label {
+    display: flex; justify-content: space-between;
+    font-size: 12px; color: var(--text-secondary);
+}
+.qs-slider {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 4px; border-radius: 2px;
+    background: var(--bg-glass-hover); outline: none;
+    cursor: pointer;
+}
+.qs-slider::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 16px; height: 16px; border-radius: 50%;
+    background: var(--accent); cursor: pointer;
+    box-shadow: 0 2px 8px var(--accent-glow);
+    transition: transform var(--transition-fast);
+}
+.qs-slider::-webkit-slider-thumb:hover { transform: scale(1.25); }
+
+.qs-theme-row { display: flex; gap: 8px; align-items: center; }
+.qs-theme-dot {
+    width: 24px; height: 24px; border-radius: 50%; cursor: pointer;
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+    border: 2px solid transparent;
+}
+.qs-theme-dot:hover { transform: scale(1.15); }
+.qs-theme-dot.active { border-color: #fff; box-shadow: 0 0 0 2px var(--accent); }
+.qs-theme-dot.blue        { background: linear-gradient(135deg, #4a9eff, #2980d9); }
+.qs-theme-dot.purple-blue { background: linear-gradient(135deg, #9b59ff, #7b3fd9); }
+.qs-theme-dot.green       { background: linear-gradient(135deg, #27ae60, #1e8449); }
+.qs-theme-dot.cyan        { background: linear-gradient(135deg, #00cec9, #00a8a3); }
+
+.qs-open-full {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 10px; border-radius: var(--radius-md);
+    background: var(--bg-glass); border: 1px solid var(--border-glass);
+    font-size: 13px; font-weight: 500; color: var(--text-secondary);
+    cursor: pointer; transition: all var(--transition-fast);
+    text-decoration: none;
+}
+.qs-open-full:hover {
+    background: var(--bg-glass-hover); color: var(--text-primary);
+    border-color: var(--border-accent);
+}
+
+/* =========================================================
+   GAMING MODE BANNER
+   ========================================================= */
+#gaming-banner {
+    position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+    background: linear-gradient(135deg, #c0392b, #e74c3c);
+    color: #fff; border-radius: var(--radius-pill);
+    padding: 8px 20px; font-size: 13px; font-weight: 700;
+    letter-spacing: 1px; text-transform: uppercase;
+    box-shadow: 0 4px 20px rgba(231, 76, 60, 0.5);
+    z-index: 6000;
+    display: none; align-items: center; gap: 8px;
+    animation: slide-in-top 0.3s ease;
+}
+#gaming-banner.visible { display: flex; }
+@keyframes slide-in-top {
+    from { transform: translateX(-50%) translateY(-60px); opacity: 0; }
+    to   { transform: translateX(-50%) translateY(0); opacity: 1; }
+}
+
+/* =========================================================
+   UTILITIES
+   ========================================================= */
+.hidden { display: none !important; }
+.glass {
+    background: var(--bg-glass);
+    backdrop-filter: var(--blur-md);
+    -webkit-backdrop-filter: var(--blur-md);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-lg);
+}
+</style>
+</head>
+<body data-theme="blue" data-taskbar="win12">
+
+<!-- =====================================================
+     WALLPAPER LAYER
+     ===================================================== -->
+<div id="wallpaper-layer">
+    <div id="wallpaper-image"></div>
+    <video id="wallpaper-video" autoplay muted loop></video>
+</div>
+
+<!-- =====================================================
+     DESKTOP ICON AREA
+     ===================================================== -->
+<div id="desktop" oncontextmenu="showContextMenu(event)">
+    <div class="desktop-icon" ondblclick="openApp('files')" onclick="selectIcon(this)">
+        <div class="icon-img">🗂️</div>
+        <div class="icon-label">Files</div>
+    </div>
+    <div class="desktop-icon" ondblclick="openApp('terminal')" onclick="selectIcon(this)">
+        <div class="icon-img">🖥️</div>
+        <div class="icon-label">Terminal</div>
+    </div>
+    <div class="desktop-icon" ondblclick="openApp('browser')" onclick="selectIcon(this)">
+        <div class="icon-img">🌐</div>
+        <div class="icon-label">Browser</div>
+    </div>
+    <div class="desktop-icon" ondblclick="nexosAPI.openSettings()" onclick="selectIcon(this)">
+        <div class="icon-img">⚙️</div>
+        <div class="icon-label">Settings</div>
+    </div>
+    <div class="desktop-icon" ondblclick="openApp('text-editor')" onclick="selectIcon(this)">
+        <div class="icon-img">📝</div>
+        <div class="icon-label">Text Editor</div>
+    </div>
+    <div class="desktop-icon" ondblclick="openApp('image-viewer')" onclick="selectIcon(this)">
+        <div class="icon-img">🖼️</div>
+        <div class="icon-label">Photos</div>
+    </div>
+    <div class="desktop-icon" ondblclick="openApp('music')" onclick="selectIcon(this)">
+        <div class="icon-img">🎵</div>
+        <div class="icon-label">Music</div>
+    </div>
+    <div class="desktop-icon" ondblclick="openApp('calculator')" onclick="selectIcon(this)">
+        <div class="icon-img">🧮</div>
+        <div class="icon-label">Calculator</div>
+    </div>
+</div>
+
+<!-- =====================================================
+     TASKBAR
+     ===================================================== -->
+<div id="taskbar">
+
+    <!-- Start/Launcher button -->
+    <button id="start-btn" onclick="toggleLauncher()" aria-label="Start / Launcher">
+        <div class="start-logo">
+            <span></span><span></span>
+            <span></span><span></span>
+        </div>
+    </button>
+
+    <!-- Mac top-bar menu items (hidden by default) -->
+    <div id="mac-menu">
+        <span id="mac-apple-logo">🍎</span>
+        <span class="mac-menu-item bold">NexOS</span>
+        <span class="mac-menu-item">File</span>
+        <span class="mac-menu-item">Edit</span>
+        <span class="mac-menu-item">View</span>
+        <span class="mac-menu-item">Go</span>
+        <span class="mac-menu-item">Window</span>
+        <span class="mac-menu-item">Help</span>
+    </div>
+
+    <!-- Center icons -->
+    <div id="taskbar-center-icons">
+        <button class="tb-icon" data-tooltip="Files" onclick="openApp('files')">🗂️</button>
+        <button class="tb-icon" data-tooltip="Browser" onclick="openApp('browser')">🌐</button>
+        <button class="tb-icon" data-tooltip="Terminal" onclick="openApp('terminal')">🖥️</button>
+        <button class="tb-icon" data-tooltip="Text Editor" onclick="openApp('text-editor')">📝</button>
+        <button class="tb-icon" data-tooltip="Music" onclick="openApp('music')">🎵</button>
+        <div class="tb-sep"></div>
+        <!-- Running apps injected here by JS -->
+        <div id="running-apps-slot"></div>
+    </div>
+
+    <!-- System Tray -->
+    <div id="system-tray">
+        <div class="tray-item" id="tray-net" title="Network">
+            <span class="tray-icon" id="net-icon">📶</span>
+        </div>
+        <div class="tray-item" id="tray-vol" title="Volume" onclick="toggleQuickSettings()">
+            <span class="tray-icon" id="vol-icon">🔊</span>
+        </div>
+        <div class="tray-item" id="tray-bat" title="Battery">
+            <span class="tray-icon" id="bat-icon">🔋</span>
+            <span id="bat-pct" style="font-size:11px"></span>
+        </div>
+        <div class="tb-sep"></div>
+        <div id="clock-block" onclick="toggleQuickSettings()">
+            <div id="clock-time">--:--</div>
+            <div id="clock-date">Loading...</div>
+        </div>
+        <button class="tb-icon" data-tooltip="Quick Settings" onclick="toggleQuickSettings()">⚙️</button>
+    </div>
+
+</div>
+
+<!-- =====================================================
+     APP LAUNCHER OVERLAY
+     ===================================================== -->
+<div id="launcher-overlay" onclick="closeLauncherOnBackdrop(event)">
+    <div id="launcher-panel">
+
+        <!-- Search -->
+        <div id="launcher-search-wrap">
+            <span id="launcher-search-icon">🔍</span>
+            <input type="text" id="launcher-search" placeholder="Search apps, files, settings..."
+                   oninput="filterLauncher(this.value)" autocomplete="off" />
+        </div>
+
+        <!-- Categories -->
+        <div id="launcher-categories">
+            <button class="cat-btn active" onclick="filterCategory('all', this)">All</button>
+            <button class="cat-btn" onclick="filterCategory('pinned', this)">Pinned</button>
+            <button class="cat-btn" onclick="filterCategory('system', this)">System</button>
+            <button class="cat-btn" onclick="filterCategory('games', this)">Games</button>
+            <button class="cat-btn" onclick="filterCategory('utilities', this)">Utilities</button>
+        </div>
+
+        <!-- Recent label -->
+        <div id="launcher-recent-label">All Apps</div>
+
+        <!-- App Grid -->
+        <div id="launcher-grid">
+            <!-- Populated by JS -->
+        </div>
+
+    </div>
+</div>
+
+<!-- =====================================================
+     QUICK SETTINGS PANEL
+     ===================================================== -->
+<div id="quick-settings-panel">
+    <div class="qs-header">
+        <span class="qs-title">Quick Settings</span>
+        <span onclick="toggleQuickSettings()" style="cursor:pointer;color:var(--text-muted);font-size:16px">✕</span>
+    </div>
+
+    <!-- Toggle buttons row 1 -->
+    <div class="qs-btn-row">
+        <div class="qs-btn active" id="qs-wifi" onclick="toggleQsBtn(this, 'wifi')">
+            <span>📶</span><span class="qs-btn-label">Wi-Fi</span>
+        </div>
+        <div class="qs-btn" id="qs-bt" onclick="toggleQsBtn(this, 'bluetooth')">
+            <span>🦷</span><span class="qs-btn-label">Bluetooth</span>
+        </div>
+        <div class="qs-btn" id="qs-gaming" onclick="toggleGamingMode()">
+            <span>🎮</span><span class="qs-btn-label">Gaming</span>
+        </div>
+        <div class="qs-btn" id="qs-dnd" onclick="toggleQsBtn(this, 'dnd')">
+            <span>🔕</span><span class="qs-btn-label">Do Not Disturb</span>
+        </div>
+        <div class="qs-btn" id="qs-nightlight" onclick="toggleQsBtn(this, 'nightlight')">
+            <span>🌙</span><span class="qs-btn-label">Night Light</span>
+        </div>
+        <div class="qs-btn" id="qs-wine" onclick="toggleQsBtn(this, 'wine')">
+            <span>🍷</span><span class="qs-btn-label">Wine</span>
+        </div>
+    </div>
+
+    <!-- Volume slider -->
+    <div class="qs-slider-wrap">
+        <div class="qs-slider-label">
+            <span>🔊 Volume</span><span id="vol-val">80%</span>
+        </div>
+        <input type="range" class="qs-slider" min="0" max="100" value="80"
+               oninput="setVolume(this.value)">
+    </div>
+
+    <!-- Brightness slider -->
+    <div class="qs-slider-wrap">
+        <div class="qs-slider-label">
+            <span>☀️ Brightness</span><span id="bright-val">100%</span>
+        </div>
+        <input type="range" class="qs-slider" min="10" max="100" value="100"
+               oninput="setBrightness(this.value)">
+    </div>
+
+    <!-- Theme picker -->
+    <div style="display:flex; flex-direction:column; gap:8px;">
+        <div style="font-size:12px; color:var(--text-secondary);">Color Theme</div>
+        <div class="qs-theme-row">
+            <div class="qs-theme-dot blue active" onclick="applyTheme('blue')" title="Blue"></div>
+            <div class="qs-theme-dot purple-blue" onclick="applyTheme('purple-blue')" title="Purple Blue"></div>
+            <div class="qs-theme-dot green" onclick="applyTheme('green')" title="Green"></div>
+            <div class="qs-theme-dot cyan" onclick="applyTheme('cyan')" title="Cyan"></div>
+            <span style="flex:1"></span>
+            <div style="display:flex; gap:6px;">
+                <button onclick="applyTaskbarStyle('win12')"
+                    style="font-size:10px;padding:4px 10px;border-radius:6px;background:var(--bg-glass);border:1px solid var(--border-glass);color:var(--text-secondary);cursor:pointer">
+                    Win12
+                </button>
+                <button onclick="applyTaskbarStyle('mac')"
+                    style="font-size:10px;padding:4px 10px;border-radius:6px;background:var(--bg-glass);border:1px solid var(--border-glass);color:var(--text-secondary);cursor:pointer">
+                    Mac
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Open full settings -->
+    <a class="qs-open-full" onclick="nexosAPI.openSettings()">
+        <span>⚙️</span> Open Full Settings
+    </a>
+</div>
+
+<!-- =====================================================
+     CONTEXT MENU
+     ===================================================== -->
+<div id="context-menu">
+    <div class="ctx-item" onclick="toggleLauncher()">
+        <span class="ctx-icon">🚀</span> Open Launcher
+    </div>
+    <div class="ctx-item" onclick="openWallpaperPicker()">
+        <span class="ctx-icon">🖼️</span> Change Wallpaper
+    </div>
+    <div class="ctx-item" onclick="nexosAPI.openSettings()">
+        <span class="ctx-icon">⚙️</span> Display Settings
+    </div>
+    <div class="ctx-sep"></div>
+    <div class="ctx-item" onclick="refreshDesktop()">
+        <span class="ctx-icon">🔄</span> Refresh
+    </div>
+    <div class="ctx-item" onclick="openApp('terminal')">
+        <span class="ctx-icon">🖥️</span> Open Terminal Here
+    </div>
+    <div class="ctx-sep"></div>
+    <div class="ctx-item" onclick="showSystemInfo()">
+        <span class="ctx-icon">📊</span> System Info
+    </div>
+</div>
+
+<!-- =====================================================
+     NOTIFICATION AREA
+     ===================================================== -->
+<div id="notification-area"></div>
+
+<!-- =====================================================
+     GAMING MODE BANNER
+     ===================================================== -->
+<div id="gaming-banner">
+    🎮 <span>Gaming Mode ACTIVE</span>
+</div>
+
+<!-- =====================================================
+     HIDDEN WALLPAPER FILE INPUT
+     ===================================================== -->
+<input type="file" id="wallpaper-file-input" accept="image/*,video/*"
+       style="display:none" onchange="handleWallpaperFile(this)">
+
+<!-- =====================================================
+     JAVASCRIPT
+     ===================================================== -->
+<script>
+// ================================================================
+// NexOS Shell — Renderer Script
+// ================================================================
+
+'use strict';
+
+// ----- App catalogue -----------------------------------------
+const APP_CATALOGUE = [
+    { id: 'files',       name: 'Files',         icon: '🗂️',  cat: 'system',    exec: 'thunar' },
+    { id: 'terminal',    name: 'Terminal',       icon: '🖥️',  cat: 'system',    exec: 'xterm' },
+    { id: 'browser',     name: 'Web Browser',   icon: '🌐',  cat: 'internet',  exec: 'firefox' },
+    { id: 'text-editor', name: 'Text Editor',   icon: '📝',  cat: 'utilities', exec: 'gedit' },
+    { id: 'settings',    name: 'Settings',      icon: '⚙️',  cat: 'system',    exec: '' },
+    { id: 'music',       name: 'Music Player',  icon: '🎵',  cat: 'media',     exec: 'rhythmbox' },
+    { id: 'image-viewer',name: 'Photos',        icon: '🖼️',  cat: 'media',     exec: 'eog' },
+    { id: 'video',       name: 'Video Player',  icon: '🎬',  cat: 'media',     exec: 'vlc' },
+    { id: 'calculator',  name: 'Calculator',    icon: '🧮',  cat: 'utilities', exec: 'gnome-calculator' },
+    { id: 'archive',     name: 'Archive Mgr',   icon: '📦',  cat: 'utilities', exec: 'file-roller' },
+    { id: 'htop',        name: 'System Monitor',icon: '📊',  cat: 'system',    exec: 'xterm -e htop' },
+    { id: 'neofetch',    name: 'Neofetch',      icon: '🧬',  cat: 'system',    exec: 'xterm -e neofetch' },
+    { id: 'wine-cfg',    name: 'Wine Config',   icon: '🍷',  cat: 'utilities', exec: 'winecfg' },
+    { id: 'waydroid',    name: 'Waydroid',      icon: '🤖',  cat: 'utilities', exec: 'waydroid show-full-ui' },
+    { id: 'rofi',        name: 'App Search',    icon: '🔍',  cat: 'utilities', exec: 'rofi -show run' },
+    { id: 'nvtop',       name: 'GPU Monitor',   icon: '💻',  cat: 'system',    exec: 'xterm -e nvtop' },
+    { id: 'plank',       name: 'Dock (Plank)',  icon: '⛵',  cat: 'system',    exec: 'plank' },
+    { id: 'picom-cfg',   name: 'Compositor',    icon: '🪟',  cat: 'system',    exec: 'picom-cfg' },
+    { id: 'games',       name: 'Steam/Lutris',  icon: '🎮',  cat: 'games',     exec: 'lutris' },
+    { id: 'screenshot',  name: 'Screenshot',    icon: '📸',  cat: 'utilities', exec: 'scrot' },
+];
+
+let launcherOpen     = false;
+let quickSettingsOpen = false;
+let gamingModeOn     = false;
+let currentTheme     = 'blue';
+let currentTaskbar   = 'win12';
+let notifCounter     = 0;
+let systemInfo       = {};
+
+// ----- Initialise -----------------------------------------------
+document.addEventListener('DOMContentLoaded', async () => {
+    startClock();
+    populateLauncher(APP_CATALOGUE);
+    initEventListeners();
+    await loadConfig();
+    await refreshSystemInfo();
+    tryBattery();
+
+    // Subscribe to main-process events
+    if (typeof nexosAPI !== 'undefined') {
+        nexosAPI.onShellEvent(data => handleShellEvent(data));
+        nexosAPI.onNotification(data => showNotification(data.title, data.body, data.type));
+        nexosAPI.onThemeChanged(data => applyTheme(data.theme, false));
+        nexosAPI.onWallpaperChanged(data => applyWallpaperImage(data.path));
+        nexosAPI.onConfigChanged(data => handleConfigChanged(data));
+    }
+});
+
+// ----- Clock ---------------------------------------------------
+function startClock() {
+    function tick() {
+        const now  = new Date();
+        const time = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+        const date = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        document.getElementById('clock-time').textContent = time;
+        document.getElementById('clock-date').textContent = date;
+    }
+    tick();
+    setInterval(tick, 1000);
+}
+
+// ----- Battery -------------------------------------------------
+function tryBattery() {
+    if (!navigator.getBattery) return;
+    navigator.getBattery().then(bat => {
+        function updateBat() {
+            const pct = Math.round(bat.level * 100);
+            const icon = bat.charging ? '⚡' : (pct > 80 ? '🔋' : pct > 30 ? '🪫' : '🔴');
+            document.getElementById('bat-icon').textContent = icon;
+            document.getElementById('bat-pct').textContent  = pct + '%';
+        }
+        updateBat();
+        bat.addEventListener('levelchange',   updateBat);
+        bat.addEventListener('chargingchange', updateBat);
+    }).catch(() => {
+        document.getElementById('tray-bat').style.display = 'none';
+    });
+}
+
+// ----- Load Config from main -----------------------------------
+async function loadConfig() {
+    if (typeof nexosAPI === 'undefined') return;
+    try {
+        const cfg = await nexosAPI.getConfig();
+        if (!cfg) return;
+        const theme   = cfg.appearance?.theme        || 'blue';
+        const taskbar = cfg.appearance?.taskbarStyle || 'win12';
+        gamingModeOn  = cfg.performance?.gamingMode  || false;
+        applyTheme(theme, false);
+        applyTaskbarStyle(taskbar, false);
+        if (gamingModeOn) document.getElementById('gaming-banner').classList.add('visible');
+
+        // Wallpaper
+        const wp = cfg.appearance?.wallpaper;
+        if (wp?.type === 'image' && wp?.imagePath) applyWallpaperImage(wp.imagePath);
+        if (wp?.type === 'video' && wp?.videoUrl)  applyWallpaperVideo(wp.videoUrl);
+    } catch (e) { console.warn('[NexOS] Config load error:', e); }
+}
+
+function handleConfigChanged({ key, value }) {
+    if (key === 'appearance.theme')        applyTheme(value, false);
+    if (key === 'appearance.taskbarStyle') applyTaskbarStyle(value, false);
+    if (key === 'performance.gamingMode')  setGamingBanner(value);
+}
+
+// ----- System Info ---------------------------------------------
+async function refreshSystemInfo() {
+    if (typeof nexosAPI === 'undefined') return;
+    try {
+        systemInfo = await nexosAPI.getSystemInfo();
+    } catch (e) { console.warn('[NexOS] System info error:', e); }
+}
+
+// ----- Launcher ------------------------------------------------
+function populateLauncher(apps) {
+    const grid = document.getElementById('launcher-grid');
+    grid.innerHTML = '';
+    apps.forEach(app => {
+        const el = document.createElement('div');
+        el.className = 'launcher-app';
+        el.dataset.cat = app.cat;
+        el.dataset.id  = app.id;
+        el.innerHTML = `
+            <div class="launcher-app-icon">${app.icon}</div>
+            <div class="launcher-app-name">${app.name}</div>
+        `;
+        el.addEventListener('click', () => openApp(app.id));
+        grid.appendChild(el);
+    });
+}
+
+function filterLauncher(query) {
+    query = query.toLowerCase().trim();
+    document.querySelectorAll('.launcher-app').forEach(el => {
+        const name = el.querySelector('.launcher-app-name').textContent.toLowerCase();
+        el.style.display = (!query || name.includes(query)) ? '' : 'none';
+    });
+    document.getElementById('launcher-recent-label').textContent =
+        query ? `Results for "${query}"` : 'All Apps';
+}
+
+function filterCategory(cat, btn) {
+    document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.launcher-app').forEach(el => {
+        el.style.display = (cat === 'all' || el.dataset.cat === cat) ? '' : 'none';
+    });
+    document.getElementById('launcher-recent-label').textContent =
+        cat === 'all' ? 'All Apps' : cat.charAt(0).toUpperCase() + cat.slice(1);
+}
+
+function toggleLauncher() {
+    launcherOpen = !launcherOpen;
+    const overlay = document.getElementById('launcher-overlay');
+    overlay.classList.toggle('open', launcherOpen);
+    if (launcherOpen) {
+        closeQuickSettings();
+        setTimeout(() => document.getElementById('launcher-search').focus(), 100);
+    }
+}
+
+function closeLauncherOnBackdrop(e) {
+    if (e.target === document.getElementById('launcher-overlay')) {
+        launcherOpen = false;
+        document.getElementById('launcher-overlay').classList.remove('open');
+    }
+}
+
+function closeLauncher() {
+    launcherOpen = false;
+    document.getElementById('launcher-overlay').classList.remove('open');
+}
+
+// ----- Open App ------------------------------------------------
+function openApp(id) {
+    closeLauncher();
+    const app = APP_CATALOGUE.find(a => a.id === id);
+    if (!app) return;
+
+    if (id === 'settings') {
+        if (typeof nexosAPI !== 'undefined') nexosAPI.openSettings();
+        return;
+    }
+
+    if (typeof nexosAPI !== 'undefined' && app.exec) {
+        nexosAPI.launchApp(app.exec.split(' ')[0], { args: app.exec.split(' ').slice(1) })
+            .catch(e => showNotification('Launch Error', `Could not open ${app.name}: ${e.message}`, 'error'));
+    }
+}
+
+// ----- Context Menu -------------------------------------------
+function showContextMenu(e) {
+    e.preventDefault();
+    const menu = document.getElementById('context-menu');
+    let x = e.clientX, y = e.clientY;
+    menu.classList.add('visible');
+    menu.style.left = x + 'px';
+    menu.style.top  = y + 'px';
+
+    // Clamp to viewport
+    requestAnimationFrame(() => {
+        const rect = menu.getBoundingClientRect();
+        if (rect.right  > window.innerWidth)  menu.style.left = (x - rect.width)  + 'px';
+        if (rect.bottom > window.innerHeight) menu.style.top  = (y - rect.height) + 'px';
+    });
+}
+
+function hideContextMenu() {
+    document.getElementById('context-menu').classList.remove('visible');
+}
+
+// ----- Quick Settings ------------------------------------------
+function toggleQuickSettings() {
+    quickSettingsOpen = !quickSettingsOpen;
+    const panel = document.getElementById('quick-settings-panel');
+    panel.classList.toggle('open', quickSettingsOpen);
+    if (quickSettingsOpen) closeLauncher();
+}
+
+function closeQuickSettings() {
+    quickSettingsOpen = false;
+    document.getElementById('quick-settings-panel').classList.remove('open');
+}
+
+function toggleQsBtn(el, feature) {
+    el.classList.toggle('active');
+    const active = el.classList.contains('active');
+    if (typeof nexosAPI !== 'undefined') nexosAPI.setConfig(`system.${feature}Enabled`, active);
+}
+
+function setVolume(val) {
+    document.getElementById('vol-val').textContent = val + '%';
+    document.getElementById('vol-icon').textContent =
+        val >= 70 ? '🔊' : val >= 30 ? '🔉' : val > 0 ? '🔈' : '🔇';
+    // On Linux: exec pactl set-sink-volume @DEFAULT_SINK@ val%
+    if (typeof nexosAPI !== 'undefined')
+        nexosAPI.setConfig('audio.volume', parseInt(val));
+}
+
+function setBrightness(val) {
+    document.getElementById('bright-val').textContent = val + '%';
+    document.getElementById('wallpaper-layer').style.filter = `brightness(${val / 100})`;
+}
+
+// ----- Theme --------------------------------------------------
+function applyTheme(theme, save = true) {
+    document.body.dataset.theme = theme;
+    currentTheme = theme;
+    document.querySelectorAll('.qs-theme-dot').forEach(d => {
+        d.classList.toggle('active', d.classList.contains(theme));
+    });
+    if (save && typeof nexosAPI !== 'undefined') nexosAPI.setTheme(theme);
+}
+
+// ----- Taskbar Style ------------------------------------------
+function applyTaskbarStyle(style, save = true) {
+    document.body.dataset.taskbar = style;
+    currentTaskbar = style;
+    if (save && typeof nexosAPI !== 'undefined') nexosAPI.setTaskbarStyle(style);
+}
+
+// ----- Gaming Mode -------------------------------------------
+async function toggleGamingMode() {
+    gamingModeOn = !gamingModeOn;
+    const btn = document.getElementById('qs-gaming');
+    btn.classList.toggle('active', gamingModeOn);
+
+    if (typeof nexosAPI !== 'undefined') {
+        const result = await nexosAPI.toggleGamingMode(gamingModeOn);
+        if (result?.success === false) {
+            gamingModeOn = !gamingModeOn;
+            btn.classList.toggle('active', gamingModeOn);
+            showNotification('Gaming Mode', result.error || 'Failed to toggle gaming mode.', 'error');
+            return;
+        }
+    }
+    setGamingBanner(gamingModeOn);
+    showNotification(
+        'Gaming Mode',
+        gamingModeOn ? '🎮 Gaming Mode ON — Performance mode active.' : 'Gaming Mode OFF — Normal mode restored.',
+        'info'
+    );
+}
+
+function setGamingBanner(on) {
+    document.getElementById('gaming-banner').classList.toggle('visible', on);
+    gamingModeOn = on;
+    document.getElementById('qs-gaming').classList.toggle('active', on);
+}
+
+// ----- Wallpaper ---------------------------------------------
+function openWallpaperPicker() {
+    hideContextMenu();
+    document.getElementById('wallpaper-file-input').click();
+}
+
+function handleWallpaperFile(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    if (file.type.startsWith('video/')) {
+        applyWallpaperVideo(url);
+    } else {
+        applyWallpaperImage(url);
+    }
+    if (typeof nexosAPI !== 'undefined') nexosAPI.setWallpaper(file.path || url);
+}
+
+function applyWallpaperImage(pathOrUrl) {
+    const img = document.getElementById('wallpaper-image');
+    const vid = document.getElementById('wallpaper-video');
+    vid.classList.remove('active');
+    img.style.backgroundImage = `url("${pathOrUrl.replace(/"/g, '\\"')}")`;
+    img.classList.add('visible');
+}
+
+function applyWallpaperVideo(url) {
+    const vid = document.getElementById('wallpaper-video');
+    const img = document.getElementById('wallpaper-image');
+    img.classList.remove('visible');
+    vid.src = url;
+    vid.classList.add('active');
+    vid.play().catch(() => {});
+}
+
+// ----- Notifications -----------------------------------------
+function showNotification(title, body, type = 'info') {
+    const area = document.getElementById('notification-area');
+    const id   = 'notif-' + (++notifCounter);
+
+    const iconMap = { info: 'ℹ️', warning: '⚠️', error: '❌', success: '✅' };
+    const icon = iconMap[type] || iconMap.info;
+    const duration = 5000;
+
+    const card = document.createElement('div');
+    card.className = `notification-card ${type}`;
+    card.id = id;
+    card.innerHTML = `
+        <span class="notif-icon">${icon}</span>
+        <div class="notif-body">
+            <div class="notif-title">${escapeHtml(title)}</div>
+            <div class="notif-text">${escapeHtml(body)}</div>
+        </div>
+        <span class="notif-close" onclick="dismissNotification('${id}')">✕</span>
+        <div class="notif-progress" style="animation-duration:${duration}ms"></div>
+    `;
+    card.addEventListener('click', () => dismissNotification(id));
+
+    area.prepend(card);
+
+    setTimeout(() => dismissNotification(id), duration + 200);
+}
+
+function dismissNotification(id) {
+    const card = document.getElementById(id);
+    if (!card) return;
+    card.style.transition = 'opacity 0.3s, transform 0.3s';
+    card.style.opacity = '0';
+    card.style.transform = 'translateX(100%)';
+    setTimeout(() => card.remove(), 320);
+}
+
+// ----- Desktop helpers ----------------------------------------
+function selectIcon(el) {
+    document.querySelectorAll('.desktop-icon').forEach(i => i.classList.remove('selected'));
+    el.classList.add('selected');
+}
+
+function refreshDesktop() {
+    showNotification('Desktop', 'Desktop refreshed.', 'info');
+}
+
+function showSystemInfo() {
+    hideContextMenu();
+    const info = systemInfo;
+    if (!info || !info.cpu) {
+        showNotification('System Info', 'Loading system information...', 'info');
+        nexosAPI?.getSystemInfo().then(si => {
+            systemInfo = si;
+            showNotification(
+                `${si.hostname} — NexOS ${si.nexosVersion}`,
+                `CPU: ${si.cpu.model} (${si.cpu.cores} cores, ${si.cpu.usagePercent}%) | RAM: ${si.ram.usedMB}/${si.ram.totalMB} MB | GPU: ${si.gpu.gpu}`,
+                'info'
+            );
+        });
+    } else {
+        showNotification(
+            `${info.hostname} — NexOS ${info.nexosVersion}`,
+            `CPU: ${info.cpu.usagePercent}% | RAM: ${info.ram.usedMB}/${info.ram.totalMB} MB | GPU: ${info.gpu.gpu}`,
+            'info'
+        );
+    }
+}
+
+// ----- Shell event handler ------------------------------------
+function handleShellEvent(data) {
+    switch (data.action) {
+        case 'open-launcher':  toggleLauncher();       break;
+        case 'show-desktop':   closeLauncher();        break;
+        case 'open-files':     openApp('files');       break;
+        case 'lock-screen':    lockScreen();           break;
+        case 'screenshot':     takeScreenshot();       break;
+        default: break;
+    }
+}
+
+function lockScreen() {
+    document.body.style.filter = 'brightness(0)';
+    setTimeout(() => document.body.style.filter = '', 300);
+    showNotification('NexOS', 'Screen locked.', 'info');
+}
+
+function takeScreenshot() {
+    showNotification('Screenshot', 'Screenshot saved to ~/Pictures.', 'info');
+    if (typeof nexosAPI !== 'undefined') nexosAPI.launchApp('scrot').catch(() => {});
+}
+
+// ----- Event listeners ----------------------------------------
+function initEventListeners() {
+    // Close menus on backdrop click
+    document.addEventListener('click', e => {
+        const ctx   = document.getElementById('context-menu');
+        const qs    = document.getElementById('quick-settings-panel');
+        const laun  = document.getElementById('launcher-overlay');
+
+        if (!ctx.contains(e.target))  hideContextMenu();
+        if (!qs.contains(e.target) && !e.target.closest('#system-tray'))
+            closeQuickSettings();
+    });
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+            closeLauncher();
+            hideContextMenu();
+            closeQuickSettings();
+        }
+        // Ctrl+Space as launcher fallback
+        if (e.ctrlKey && e.key === ' ') { e.preventDefault(); toggleLauncher(); }
+        // Deselect desktop icons
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.desktop-icon').forEach(i => i.classList.remove('selected'));
+        }
+    });
+
+    // Prevent default context menu on taskbar
+    document.getElementById('taskbar').addEventListener('contextmenu', e => e.preventDefault());
+    document.getElementById('launcher-panel').addEventListener('contextmenu', e => e.preventDefault());
+}
+
+// ----- Utility ------------------------------------------------
+function escapeHtml(str) {
+    return String(str)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+</script>
+</body>
+</html>

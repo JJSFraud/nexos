@@ -1,0 +1,63 @@
+{
+  "name": "nexos-shell",
+  "version": "0.1.0-demo",
+  "description": "NexOS Desktop Shell — Windows 12 + macOS hybrid Electron shell",
+  "main": "main.js",
+  "author": "NexOS Project",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --linux --x64",
+    "build:dir": "electron-builder --linux --x64 --dir",
+    "pack": "electron-builder --dir",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "electron": "^30.0.0"
+  },
+  "devDependencies": {
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "org.nexos.shell",
+    "productName": "NexOS Shell",
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": ["x64"]
+        },
+        {
+          "target": "deb",
+          "arch": ["x64"]
+        }
+      ],
+      "category": "System",
+      "icon": "assets/icon.png",
+      "executableName": "nexos-shell"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html",
+      "settings.html",
+      "assets/**/*"
+    ],
+    "extraFiles": [
+      {
+        "from": "../config",
+        "to": "config"
+      },
+      {
+        "from": "../scripts",
+        "to": "scripts"
+      }
+    ],
+    "directories": {
+      "output": "../dist"
+    }
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
