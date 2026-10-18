@@ -8,15 +8,16 @@ Param(
     [string]$TargetDisk = "C:"
 )
 
+Clear-Host
 Write-Host "==========================================================" -ForegroundColor Cyan
-Write-Host "  🌌 NexOS Safe Dual-Boot & Rollback Assistant" -ForegroundColor Green
+Write-Host "  NexOS Safe Dual-Boot & Rollback Assistant" -ForegroundColor Green
 Write-Host "==========================================================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Safety Guarantee:" -ForegroundColor Yellow
-Write-Host " • Your existing Windows 11 installation is NEVER overwritten."
-Write-Host " • All personal files, documents, and games are 100% PRESERVED."
-Write-Host " • Windows 11 remains the primary bootloader fallback."
-Write-Host " • If NexOS encounters any error, the PC automatically boots back to Windows 11."
+Write-Host " - Your existing Windows 11 installation is NEVER overwritten." -ForegroundColor White
+Write-Host " - All personal files, documents, and games are 100% PRESERVED." -ForegroundColor White
+Write-Host " - Windows 11 remains the primary bootloader fallback." -ForegroundColor White
+Write-Host " - If NexOS encounters any error, the PC automatically boots back to Windows 11." -ForegroundColor White
 Write-Host ""
 
 # Check admin privileges
@@ -30,7 +31,7 @@ if (-not $isAdmin) {
 $backupBcdPath = "$env:TEMP\BCD_Backup_$((Get-Date).ToString('yyyyMMdd_HHmmss')).bcd"
 Write-Host "[1/4] Backing up Windows Boot Configuration (BCD)..." -ForegroundColor Cyan
 bcdedit /export "$backupBcdPath" | Out-Null
-Write-Host "      ✓ BCD Backup saved to: $backupBcdPath" -ForegroundColor Green
+Write-Host "      [OK] BCD Backup saved to: $backupBcdPath" -ForegroundColor Green
 
 # 2. Check available disk space
 $drive = Get-PSDrive C
@@ -53,18 +54,18 @@ Write-Host "      Using virtual disk container (Native VHDX Boot) so physical pa
 # 4. Set Windows 11 as Default Boot Fallback
 Write-Host "[4/4] Setting Windows 11 as automatic fail-safe fallback..." -ForegroundColor Cyan
 bcdedit /timeout 5 | Out-Null
-Write-Host "      ✓ Boot menu timeout set to 5 seconds." -ForegroundColor Green
-Write-Host "      ✓ Windows 11 configured as default if no key is pressed." -ForegroundColor Green
+Write-Host "      [OK] Boot menu timeout set to 5 seconds." -ForegroundColor Green
+Write-Host "      [OK] Windows 11 configured as default if no key is pressed." -ForegroundColor Green
 
 Write-Host ""
 Write-Host "==========================================================" -ForegroundColor Green
-Write-Host "  ✅ Safe Dual-Boot Prepared Successfully!" -ForegroundColor Green
+Write-Host "  Safe Dual-Boot Prepared Successfully!" -ForegroundColor Green
 Write-Host "==========================================================" -ForegroundColor Green
 Write-Host ""
 Write-Host "Boot Instructions:" -ForegroundColor White
 Write-Host " 1. On startup, a boot screen will let you choose:" -ForegroundColor Cyan
-Write-Host "    • Windows 11 (Default - boots automatically in 5s)" -ForegroundColor White
-Write-Host "    • NexOS (Lightweight OS)" -ForegroundColor White
+Write-Host "    - Windows 11 (Default - boots automatically in 5s)" -ForegroundColor White
+Write-Host "    - NexOS (Lightweight OS)" -ForegroundColor White
 Write-Host " 2. If NexOS fails or freezes for any reason, simply restart." -ForegroundColor Yellow
 Write-Host "    It will automatically take you right back into Windows 11 with all files untouched." -ForegroundColor Yellow
 Write-Host ""
