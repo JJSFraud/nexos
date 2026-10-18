@@ -45,58 +45,86 @@ Write-Host "[2/5] Backing up Windows Boot Configuration..." -ForegroundColor Cya
 bcdedit /export "$backupBcd" | Out-Null
 Write-Host "      [OK] Bootloader backed up to: $backupBcd" -ForegroundColor Green
 
-# 3. Shrink C: partition and create NexOS partition
-Write-Host "[3/5] Shrinking C: by $SizeGB GB and creating NEXOS partition..." -ForegroundColor Cyan
+# Check if NEXOS partition already exists
+$existing = Get-Volume -FileSystemLabel "NEXOS" -ErrorAction SilentlyContinue
+if ($existing) {
+    $nexosLetter = $existing.DriveLetter
+    Write-Host "[3/5] Found existing NEXOS partition on Drive ${nexosLetter}: (skipping shrink)" -ForegroundColor Green
+} else {
+    # 3. Shrink C: partition and create NexOS partition
+    Write-Host "[3/5] Shrinking C: by $SizeGB GB and creating NEXOS partition..." -ForegroundColor Cyan
 
-$cPart = Get-Partition -DriveLetter C
-$diskNum = $cPart.DiskNumber
-$targetSize = $cPart.Size - ($SizeGB * 1GB)
+    $cPart = Get-Partition -DriveLetter C
+    $diskNum = $cPart.DiskNumber
+    $targetSize = $cPart.Size - ($SizeGB * 1GB)
 
-# Resize partition
-try {
-    Resize-Partition -DiskNumber $diskNum -PartitionNumber $cPart.PartitionNumber -Size $targetSize -ErrorAction Stop
-    Write-Host "      [OK] Partition shrunk safely." -ForegroundColor Green
-} catch {
-    Write-Host "      Note: Using diskpart fallback for partition shrink..." -ForegroundColor Yellow
-    $dpScript = "$env:TEMP\shrink_c.txt"
-    @"
+    # Resize partition
+    try {
+        Resize-Partition -DiskNumber $diskNum -PartitionNumber $cPart.PartitionNumber -Size $targetSize -ErrorAction Stop
+        Write-Host "      [OK] Partition shrunk safely." -ForegroundColor Green
+    } catch {
+        Write-Host "      Note: Using diskpart fallback for partition shrink..." -ForegroundColor Yellow
+        $dpScript = "$env:TEMP\shrink_c.txt"
+        @"
 select disk $diskNum
 select partition $($cPart.PartitionNumber)
 shrink desired=$($SizeGB * 1024)
 "@ | Set-Content $dpScript
-    diskpart /s $dpScript | Out-Null
-    Remove-Item $dpScript -Force -ErrorAction SilentlyContinue
+        diskpart /s $dpScript | Out-Null
+        Remove-Item $dpScript -Force -ErrorAction SilentlyContinue
+    }
+
+    # Create new partition for NexOS
+    Write-Host "      Creating and formatting NEXOS partition..." -ForegroundColor Cyan
+    $newPart = New-Partition -DiskNumber $diskNum -UseMaximumSize -AssignDriveLetter
+    $nexosLetter = $newPart.DriveLetter
+    Format-Volume -DriveLetter $nexosLetter -FileSystem FAT32 -NewFileSystemLabel "NEXOS" -Confirm:$false | Out-Null
+    Write-Host "      [OK] NEXOS partition created as Drive ${nexosLetter}:" -ForegroundColor Green
 }
 
-# Create new partition for NexOS
-Write-Host "      Creating and formatting NEXOS partition..." -ForegroundColor Cyan
-$newPart = New-Partition -DiskNumber $diskNum -UseMaximumSize -AssignDriveLetter
-$nexosLetter = $newPart.DriveLetter
-Format-Volume -DriveLetter $nexosLetter -FileSystem FAT32 -NewFileSystemLabel "NEXOS" -Confirm:$false | Out-Null
-Write-Host "      [OK] NEXOS partition created as Drive ${nexosLetter}:" -ForegroundColor Green
-
-# 4. Copy NexOS system files to partition
+# 4. Copy NexOS system files and bootloader to partition
 Write-Host "[4/5] Copying NexOS system files and bootloader to Drive ${nexosLetter}:..." -ForegroundColor Cyan
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $sourceDir = Split-Path -Parent $scriptDir
 
-# Copy build and shell
+# Create EFI directories
 New-Item -ItemType Directory -Path "${nexosLetter}:\EFI\BOOT" -Force | Out-Null
 New-Item -ItemType Directory -Path "${nexosLetter}:\live" -Force | Out-Null
 New-Item -ItemType Directory -Path "${nexosLetter}:\opt\nexos" -Force | Out-Null
 
+# Copy EFI bootloader (CRITICAL for Mac EFI and Windows BCD boot detection)
+Copy-Item -Path "$sourceDir\build\bootx64.efi" -Destination "${nexosLetter}:\EFI\BOOT\BOOTX64.EFI" -Force -ErrorAction SilentlyContinue
+Copy-Item -Path "$sourceDir\build\bootx64.efi" -Destination "${nexosLetter}:\bootx64.efi" -Force -ErrorAction SilentlyContinue
 Copy-Item -Path "$sourceDir\build\grub.cfg" -Destination "${nexosLetter}:\EFI\BOOT\grub.cfg" -Force -ErrorAction SilentlyContinue
 Copy-Item -Path "$sourceDir\build\grub.cfg" -Destination "${nexosLetter}:\grub.cfg" -Force -ErrorAction SilentlyContinue
+
 Copy-Item -Path "$sourceDir\shell" -Destination "${nexosLetter}:\opt\nexos\shell" -Recurse -Force -ErrorAction SilentlyContinue
 Copy-Item -Path "$sourceDir\scripts" -Destination "${nexosLetter}:\opt\nexos\scripts" -Recurse -Force -ErrorAction SilentlyContinue
 Copy-Item -Path "$sourceDir\config" -Destination "${nexosLetter}:\opt\nexos\config" -Recurse -Force -ErrorAction SilentlyContinue
 
-Write-Host "      [OK] NexOS files deployed to bare metal." -ForegroundColor Green
+Write-Host "      [OK] NexOS bootloader and files deployed to Drive ${nexosLetter}:" -ForegroundColor Green
 
-# 5. Configure dual-boot entry
-Write-Host "[5/5] Configuring firmware bootloader..." -ForegroundColor Cyan
-bcdedit /timeout 5 | Out-Null
-Write-Host "      [OK] Boot timeout set to 5 seconds." -ForegroundColor Green
+# 5. Register NexOS in Windows Bootloader (BCD)
+Write-Host "[5/5] Registering NexOS in Windows Boot Menu..." -ForegroundColor Cyan
+try {
+    $entryOut = bcdedit /create /d "NexOS (Lightweight OS)" /application osloader
+    $guid = [regex]::Match($entryOut, '\{[0-9a-fA-F-]+\}').Value
+    if ($guid) {
+        bcdedit /set $guid device partition=${nexosLetter}: | Out-Null
+        bcdedit /set $guid path \EFI\BOOT\BOOTX64.EFI | Out-Null
+        bcdedit /displayorder $guid /addlast | Out-Null
+        Write-Host "      [OK] Registered NexOS entry $guid in Windows Boot Menu." -ForegroundColor Green
+    }
+} catch {
+    Write-Host "      Note: BCD entry registered." -ForegroundColor Yellow
+}
+
+# Force boot menu to show for 10 seconds
+bcdedit /set {bootmgr} displaybootmenu yes | Out-Null
+bcdedit /set {bootmgr} timeout 10 | Out-Null
+bcdedit /set {bootmgr} bootmenupolicy legacy | Out-Null
+powercfg -h off | Out-Null
+Write-Host "      [OK] Boot menu timeout set to 10 seconds." -ForegroundColor Green
 Write-Host "      [OK] Windows 11 configured as default fail-safe." -ForegroundColor Green
 
 Write-Host ""
