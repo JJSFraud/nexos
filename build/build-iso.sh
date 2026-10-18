@@ -677,10 +677,6 @@ stage_create_iso() {
     grub-mkrescue \
         --output="${ISO_OUTPUT}" \
         "${ISO_DIR}" \
-        -- \
-        -volid "NexOS" \
-        -appid "NexOS ${NEXOS_VERSION}" \
-        -publisher "NexOS Project" \
         2>&1 | tee -a "${LOGFILE}"
 
     timer_end
