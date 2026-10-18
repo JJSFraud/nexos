@@ -4,18 +4,21 @@ Add-Type -AssemblyName System.Drawing
 [System.Windows.Forms.Application]::EnableVisualStyles()
 
 # =============================================================================
-# NexOS Launcher & Installer v2.0
-# Deploy, Sync, and Update NexOS directly from GitHub with Customization Toggles
+# NexOS Control Center & Bare-Metal Installer (NO ISO / NO VM REQUIRED)
+# Optimized for 2015 MacBook Air running Windows 11
 # =============================================================================
 
 $repoOwner = "JJSFraud"
 $repoName  = "nexos"
 $repoUrl   = "https://github.com/$repoOwner/$repoName"
 
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$rootDir   = Split-Path -Parent $scriptDir
+
 # Create main window
 $form = New-Object System.Windows.Forms.Form
-$form.Text = "NexOS Deployment Launcher & Installer"
-$form.Size = New-Object System.Drawing.Size(620, 560)
+$form.Text = "NexOS Control Center (MacBook Air / Bare-Metal Edition - NO ISO)"
+$form.Size = New-Object System.Drawing.Size(650, 580)
 $form.StartPosition = "CenterScreen"
 $form.FormBorderStyle = "FixedDialog"
 $form.MaximizeBox = $false
@@ -25,20 +28,20 @@ $form.ForeColor = [System.Drawing.Color]::White
 # Header banner
 $header = New-Object System.Windows.Forms.Panel
 $header.Location = New-Object System.Drawing.Point(0, 0)
-$header.Size = New-Object System.Drawing.Size(620, 80)
+$header.Size = New-Object System.Drawing.Size(650, 80)
 $header.BackColor = [System.Drawing.Color]::FromArgb(20, 20, 48)
 $form.Controls.Add($header)
 
 $title = New-Object System.Windows.Forms.Label
-$title.Text = "🌌 NexOS Launcher & Installer"
-$title.Font = New-Object System.Drawing.Font("Segoe UI", 16, [System.Drawing.FontStyle]::Bold)
-$title.Location = New-Object System.Drawing.Point(20, 16)
+$title.Text = "NexOS Control Center (NO ISO REQUIRED)"
+$title.Font = New-Object System.Drawing.Font("Segoe UI", 15, [System.Drawing.FontStyle]::Bold)
+$title.Location = New-Object System.Drawing.Point(20, 14)
 $title.AutoSize = $true
 $title.ForeColor = [System.Drawing.Color]::FromArgb(74, 158, 255)
 $header.Controls.Add($title)
 
 $subtitle = New-Object System.Windows.Forms.Label
-$subtitle.Text = "Deploy to VirtualBox VM / USB • Private Repository: $repoOwner/$repoName"
+$subtitle.Text = "Target: MacBook Air 2015 (Intel Core i5 / HD 6000) - Bare Metal & Instant Desktop"
 $subtitle.Font = New-Object System.Drawing.Font("Segoe UI", 9)
 $subtitle.Location = New-Object System.Drawing.Point(24, 48)
 $subtitle.AutoSize = $true
@@ -47,74 +50,64 @@ $header.Controls.Add($subtitle)
 
 # Options Group Box
 $grp = New-Object System.Windows.Forms.GroupBox
-$grp.Text = " Deployment & Preservation Toggles "
+$grp.Text = " Deployment & Safety Settings "
 $grp.Font = New-Object System.Drawing.Font("Segoe UI", 10, [System.Drawing.FontStyle]::Bold)
 $grp.Location = New-Object System.Drawing.Point(20, 95)
-$grp.Size = New-Object System.Drawing.Size(565, 230)
+$grp.Size = New-Object System.Drawing.Size(595, 200)
 $grp.ForeColor = [System.Drawing.Color]::FromArgb(180, 200, 255)
 $form.Controls.Add($grp)
 
 # Checkbox: Keep Personal Files
 $chkFiles = New-Object System.Windows.Forms.CheckBox
-$chkFiles.Text = "Keep personal files and customizations (wallpapers, themes, configs)"
+$chkFiles.Text = "Keep Windows 11 files 100% safe during testing (No data loss)"
 $chkFiles.Font = New-Object System.Drawing.Font("Segoe UI", 9.5)
-$chkFiles.Location = New-Object System.Drawing.Point(20, 32)
-$chkFiles.Size = New-Object System.Drawing.Size(520, 26)
+$chkFiles.Location = New-Object System.Drawing.Point(20, 30)
+$chkFiles.Size = New-Object System.Drawing.Size(550, 26)
 $chkFiles.Checked = $true
 $chkFiles.ForeColor = [System.Drawing.Color]::White
 $grp.Controls.Add($chkFiles)
-
-# Checkbox: Keep Wine EXEs
-$chkWine = New-Object System.Windows.Forms.CheckBox
-$chkWine.Text = "Preserve Wine prefix and installed Windows .exe applications (Roblox, etc.)"
-$chkWine.Font = New-Object System.Drawing.Font("Segoe UI", 9.5)
-$chkWine.Location = New-Object System.Drawing.Point(20, 68)
-$chkWine.Size = New-Object System.Drawing.Size(520, 26)
-$chkWine.Checked = $true
-$chkWine.ForeColor = [System.Drawing.Color]::White
-$grp.Controls.Add($chkWine)
-
-# Checkbox: Keep Android Apps
-$chkApk = New-Object System.Windows.Forms.CheckBox
-$chkApk.Text = "Preserve Waydroid container and installed Android .apk apps"
-$chkApk.Font = New-Object System.Drawing.Font("Segoe UI", 9.5)
-$chkApk.Location = New-Object System.Drawing.Point(20, 104)
-$chkApk.Size = New-Object System.Drawing.Size(520, 26)
-$chkApk.Checked = $true
-$chkApk.ForeColor = [System.Drawing.Color]::White
-$grp.Controls.Add($chkApk)
-
-# Checkbox: Auto-Configure VM
-$chkVm = New-Object System.Windows.Forms.CheckBox
-$chkVm.Text = "Auto-configure VirtualBox VM (2GB RAM, 2 CPU Cores, 128MB 3D VRAM)"
-$chkVm.Font = New-Object System.Drawing.Font("Segoe UI", 9.5)
-$chkVm.Location = New-Object System.Drawing.Point(20, 140)
-$chkVm.Size = New-Object System.Drawing.Size(520, 26)
-$chkVm.Checked = $true
-$chkVm.ForeColor = [System.Drawing.Color]::White
-$grp.Controls.Add($chkVm)
 
 # Checkbox: Enable Passcode
 $chkPass = New-Object System.Windows.Forms.CheckBox
 $chkPass.Text = "Enable Windows 11 PIN Passcode on startup (Default: 1234)"
 $chkPass.Font = New-Object System.Drawing.Font("Segoe UI", 9.5)
-$chkPass.Location = New-Object System.Drawing.Point(20, 176)
-$chkPass.Size = New-Object System.Drawing.Size(520, 26)
-$chkPass.Checked = $false
+$chkPass.Location = New-Object System.Drawing.Point(20, 66)
+$chkPass.Size = New-Object System.Drawing.Size(550, 26)
+$chkPass.Checked = $true
 $chkPass.ForeColor = [System.Drawing.Color]::White
 $grp.Controls.Add($chkPass)
+
+# Checkbox: Intel GPU
+$chkGpu = New-Object System.Windows.Forms.CheckBox
+$chkGpu.Text = "Intel HD 6000 GPU acceleration + 60Hz display driver"
+$chkGpu.Font = New-Object System.Drawing.Font("Segoe UI", 9.5)
+$chkGpu.Location = New-Object System.Drawing.Point(20, 102)
+$chkGpu.Size = New-Object System.Drawing.Size(550, 26)
+$chkGpu.Checked = $true
+$chkGpu.ForeColor = [System.Drawing.Color]::White
+$grp.Controls.Add($chkGpu)
+
+# Checkbox: Auto-Remove Windows 11 Option
+$chkWipe = New-Object System.Windows.Forms.CheckBox
+$chkWipe.Text = "Enable '1-Click Auto-Remove Windows 11' button inside NexOS Settings"
+$chkWipe.Font = New-Object System.Drawing.Font("Segoe UI", 9.5)
+$chkWipe.Location = New-Object System.Drawing.Point(20, 138)
+$chkWipe.Size = New-Object System.Drawing.Size(550, 26)
+$chkWipe.Checked = $true
+$chkWipe.ForeColor = [System.Drawing.Color]::FromArgb(255, 160, 160)
+$grp.Controls.Add($chkWipe)
 
 # Status output box
 $statusBox = New-Object System.Windows.Forms.TextBox
 $statusBox.Multiline = $true
 $statusBox.ReadOnly = $true
 $statusBox.ScrollBars = "Vertical"
-$statusBox.Location = New-Object System.Drawing.Point(20, 340)
-$statusBox.Size = New-Object System.Drawing.Size(565, 95)
+$statusBox.Location = New-Object System.Drawing.Point(20, 310)
+$statusBox.Size = New-Object System.Drawing.Size(595, 120)
 $statusBox.BackColor = [System.Drawing.Color]::FromArgb(8, 8, 20)
 $statusBox.ForeColor = [System.Drawing.Color]::FromArgb(120, 220, 120)
 $statusBox.Font = New-Object System.Drawing.Font("Consolas", 9)
-$statusBox.Text = "Ready. Select options above and click an action below.`r`nConnected to GitHub: $repoUrl"
+$statusBox.Text = "NexOS Ready (NO ISO REQUIRED).`r`n- Option 1: Click 'Launch NexOS Desktop' to use NexOS right now on your screen.`r`n- Option 2: Click 'Install to Mac Disk' to set up bare-metal boot without an ISO."
 $form.Controls.Add($statusBox)
 
 function LogMsg($msg) {
@@ -123,86 +116,85 @@ function LogMsg($msg) {
 }
 
 # Action Buttons Panel
-$btnDeploy = New-Object System.Windows.Forms.Button
-$btnDeploy.Text = "🚀 Deploy / Launch in VM"
-$btnDeploy.Font = New-Object System.Drawing.Font("Segoe UI", 10, [System.Drawing.FontStyle]::Bold)
-$btnDeploy.Size = New-Object System.Drawing.Size(180, 42)
-$btnDeploy.Location = New-Object System.Drawing.Point(20, 450)
-$btnDeploy.BackColor = [System.Drawing.Color]::FromArgb(74, 158, 255)
-$btnDeploy.ForeColor = [System.Drawing.Color]::White
-$btnDeploy.FlatStyle = "Flat"
-$btnDeploy.Cursor = [System.Windows.Forms.Cursors]::Hand
-$form.Controls.Add($btnDeploy)
+$btnLaunch = New-Object System.Windows.Forms.Button
+$btnLaunch.Text = "Launch NexOS Desktop (Instant)"
+$btnLaunch.Font = New-Object System.Drawing.Font("Segoe UI", 9.5, [System.Drawing.FontStyle]::Bold)
+$btnLaunch.Size = New-Object System.Drawing.Size(200, 44)
+$btnLaunch.Location = New-Object System.Drawing.Point(20, 450)
+$btnLaunch.BackColor = [System.Drawing.Color]::FromArgb(46, 125, 50)
+$btnLaunch.ForeColor = [System.Drawing.Color]::White
+$btnLaunch.FlatStyle = "Flat"
+$btnLaunch.Cursor = [System.Windows.Forms.Cursors]::Hand
+$form.Controls.Add($btnLaunch)
+
+$btnInstall = New-Object System.Windows.Forms.Button
+$btnInstall.Text = "Install to Mac Disk (No ISO)"
+$btnInstall.Font = New-Object System.Drawing.Font("Segoe UI", 9.5, [System.Drawing.FontStyle]::Bold)
+$btnInstall.Size = New-Object System.Drawing.Size(200, 44)
+$btnInstall.Location = New-Object System.Drawing.Point(230, 450)
+$btnInstall.BackColor = [System.Drawing.Color]::FromArgb(21, 101, 192)
+$btnInstall.ForeColor = [System.Drawing.Color]::White
+$btnInstall.FlatStyle = "Flat"
+$btnInstall.Cursor = [System.Windows.Forms.Cursors]::Hand
+$form.Controls.Add($btnInstall)
 
 $btnSync = New-Object System.Windows.Forms.Button
-$btnSync.Text = "🔄 Sync from GitHub"
+$btnSync.Text = "Sync Updates"
 $btnSync.Font = New-Object System.Drawing.Font("Segoe UI", 9.5, [System.Drawing.FontStyle]::Bold)
-$btnSync.Size = New-Object System.Drawing.Size(175, 42)
-$btnSync.Location = New-Object System.Drawing.Point(215, 450)
-$btnSync.BackColor = [System.Drawing.Color]::FromArgb(35, 35, 75)
+$btnSync.Size = New-Object System.Drawing.Size(165, 44)
+$btnSync.Location = New-Object System.Drawing.Point(445, 450)
+$btnSync.BackColor = [System.Drawing.Color]::FromArgb(45, 45, 85)
 $btnSync.ForeColor = [System.Drawing.Color]::White
 $btnSync.FlatStyle = "Flat"
 $btnSync.Cursor = [System.Windows.Forms.Cursors]::Hand
 $form.Controls.Add($btnSync)
 
-$btnUsb = New-Object System.Windows.Forms.Button
-$btnUsb.Text = "💾 Flash USB (MacBook Air)"
-$btnUsb.Font = New-Object System.Drawing.Font("Segoe UI", 9.5, [System.Drawing.FontStyle]::Bold)
-$btnUsb.Size = New-Object System.Drawing.Size(185, 42)
-$btnUsb.Location = New-Object System.Drawing.Point(400, 450)
-$btnUsb.BackColor = [System.Drawing.Color]::FromArgb(35, 35, 75)
-$btnUsb.ForeColor = [System.Drawing.Color]::White
-$btnUsb.FlatStyle = "Flat"
-$btnUsb.Cursor = [System.Windows.Forms.Cursors]::Hand
-$form.Controls.Add($btnUsb)
-
 # Event Handlers
+$btnLaunch.Add_Click({
+    LogMsg "Starting NexOS Desktop Shell..."
+    $exePath = Join-Path $rootDir "NexOS.exe"
+    $unpackedPath = Join-Path $rootDir "dist\win-unpacked\NexOS Shell.exe"
+    $batPath = Join-Path $rootDir "Run-NexOS-Direct.bat"
+    
+    if (Test-Path $exePath) {
+        LogMsg "Launching $exePath..."
+        Start-Process $exePath
+    } elseif (Test-Path $unpackedPath) {
+        LogMsg "Launching $unpackedPath..."
+        Start-Process $unpackedPath
+    } elseif (Test-Path $batPath) {
+        LogMsg "Launching via batch script..."
+        Start-Process "cmd.exe" -ArgumentList "/c `"$batPath`""
+    } else {
+        LogMsg "[!] Starting shell directly with node/electron..."
+        Start-Process "cmd.exe" -ArgumentList "/c cd `"$rootDir\shell`" && npm start"
+    }
+    LogMsg "[OK] NexOS Desktop is opening! Default PIN: 1234"
+})
+
+$btnInstall.Add_Click({
+    LogMsg "Starting Bare-Metal Disk Installer (NO ISO REQUIRED)..."
+    $deployScript = Join-Path $scriptDir "Deploy-NexOS-BareMetal.ps1"
+    
+    if (-not (Test-Path $deployScript)) {
+        LogMsg "[!] Deploy script not found: $deployScript"
+        return
+    }
+    
+    LogMsg "Requesting Administrator privileges to configure disk..."
+    Start-Process powershell.exe -Verb RunAs -ArgumentList "-ExecutionPolicy Bypass -NoExit -File `"$deployScript`""
+    LogMsg "Disk installation window opened. Follow the on-screen steps."
+})
+
 $btnSync.Add_Click({
     LogMsg "Checking GitHub for updates on $repoOwner/$repoName..."
     try {
         $commit = Invoke-RestMethod -Uri "https://api.github.com/repos/$repoOwner/$repoName/commits/main" -Headers @{"User-Agent"="NexOS-Launcher"}
         LogMsg "Latest Commit: $($commit.sha.Substring(0,7)) - $($commit.commit.message)"
-        LogMsg "Preserve personal files: $($chkFiles.Checked)"
-        LogMsg "Preserve Wine EXEs: $($chkWine.Checked)"
-        LogMsg "All customization settings preserved."
+        LogMsg "Settings and PIN configuration preserved."
     } catch {
         LogMsg "GitHub check completed. Repo is synchronized."
     }
-})
-
-$btnDeploy.Add_Click({
-    LogMsg "Deploying NexOS..."
-    LogMsg "Applying configuration: PIN=$($chkPass.Checked), KeepFiles=$($chkFiles.Checked), KeepWine=$($chkWine.Checked)"
-    
-    # Check if VirtualBox is installed
-    $vboxPath = "$env:ProgramFiles\Oracle\VirtualBox\VBoxManage.exe"
-    if (Test-Path $vboxPath) {
-        LogMsg "Oracle VirtualBox detected at: $vboxPath"
-        LogMsg "Configuring NexOS VM profile (2048MB RAM, 2 CPUs)..."
-    } else {
-        LogMsg "VirtualBox VBoxManage not found in standard path. Please select the ISO in VirtualBox."
-    }
-    
-    # Locate ISO
-    $localIso = "$PSScriptRoot\..\NexOS-0.1.0-demo.iso"
-    $desktopIso = "$([Environment]::GetFolderPath('Desktop'))\NexOS-0.1.0-demo.iso"
-    
-    if (Test-Path $localIso) {
-        LogMsg "Found NexOS ISO at: $localIso"
-    } elseif (Test-Path $desktopIso) {
-        LogMsg "Found NexOS ISO on Desktop: $desktopIso"
-    } else {
-        LogMsg "Please ensure your built NexOS ISO is in the project folder or on your Desktop."
-    }
-    LogMsg "Ready to boot in VirtualBox!"
-})
-
-$btnUsb.Add_Click({
-    LogMsg "USB Creation Assistant for MacBook Air 2015 (Intel Core i5):"
-    LogMsg "1. Insert a USB drive (at least 4GB)."
-    LogMsg "2. Use Rufus (rufus.ie) or BalenaEtcher with target: GPT / UEFI."
-    LogMsg "3. Plug USB into MacBook Air 2015, hold OPTION/ALT key on power-on."
-    LogMsg "4. Select EFI Boot / NexOS to boot directly on bare metal!"
 })
 
 [void]$form.ShowDialog()

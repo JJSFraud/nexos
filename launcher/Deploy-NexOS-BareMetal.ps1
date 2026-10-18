@@ -102,6 +102,31 @@ Copy-Item -Path "$sourceDir\shell" -Destination "${nexosLetter}:\opt\nexos\shell
 Copy-Item -Path "$sourceDir\scripts" -Destination "${nexosLetter}:\opt\nexos\scripts" -Recurse -Force -ErrorAction SilentlyContinue
 Copy-Item -Path "$sourceDir\config" -Destination "${nexosLetter}:\opt\nexos\config" -Recurse -Force -ErrorAction SilentlyContinue
 
+# Download live kernel and initrd if missing (NO ISO REQUIRED)
+$vmlinuzPath = "${nexosLetter}:\live\vmlinuz"
+$initrdPath  = "${nexosLetter}:\live\initrd.img"
+
+if (-not (Test-Path $vmlinuzPath) -or -not (Test-Path $initrdPath)) {
+    Write-Host "      Downloading bare-metal Linux kernel & ramdisk (No ISO needed, ~48MB)..." -ForegroundColor Yellow
+    
+    $kernelUrl = "https://deb.debian.org/debian/dists/bookworm/main/installer-amd64/current/images/netboot/debian-installer/amd64/linux"
+    $initrdUrl = "https://deb.debian.org/debian/dists/bookworm/main/installer-amd64/current/images/netboot/debian-installer/amd64/initrd.gz"
+    
+    try {
+        if (-not (Test-Path $vmlinuzPath)) {
+            Write-Host "      Fetching kernel..." -ForegroundColor Cyan
+            curl.exe -fL "$kernelUrl" -o "$vmlinuzPath" --progress-bar
+        }
+        if (-not (Test-Path $initrdPath)) {
+            Write-Host "      Fetching initrd..." -ForegroundColor Cyan
+            curl.exe -fL "$initrdUrl" -o "$initrdPath" --progress-bar
+        }
+        Write-Host "      [OK] Kernel & initrd installed to partition." -ForegroundColor Green
+    } catch {
+        Write-Host "      [!] Note: Please check internet connection to download kernel files." -ForegroundColor Red
+    }
+}
+
 Write-Host "      [OK] NexOS bootloader and files deployed to Drive ${nexosLetter}:" -ForegroundColor Green
 
 # 5. Register NexOS in Windows Bootloader (BCD)

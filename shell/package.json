@@ -12,10 +12,8 @@
     "pack": "electron-builder --dir",
     "lint": "eslint ."
   },
-  "dependencies": {
-    "electron": "^30.0.0"
-  },
   "devDependencies": {
+    "electron": "^41.7.1",
     "electron-builder": "^24.13.3"
   },
   "build": {
@@ -25,11 +23,15 @@
       "target": [
         {
           "target": "AppImage",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         },
         {
           "target": "deb",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "category": "System",

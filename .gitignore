@@ -1,0 +1,6 @@
+node_modules/
+dist/
+*.iso
+*.7z
+nexos-build/
+*.log
