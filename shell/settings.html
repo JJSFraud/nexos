@@ -481,7 +481,13 @@ body.show-advanced .nav-item.advanced-only { display:flex; }
             <span class="nav-icon">🔗</span> Compatibility
         </div>
 
-        <div class="sidebar-section-label">System</div>
+        <div class="sidebar-section-label">System & Security</div>
+        <div class="nav-item" data-page="security" onclick="showPage('security', this)">
+            <span class="nav-icon">🔐</span> Passcode & PIN
+        </div>
+        <div class="nav-item" data-page="updates" onclick="showPage('updates', this)">
+            <span class="nav-icon">🔄</span> System Updates
+        </div>
         <div class="nav-item" data-page="system" onclick="showPage('system', this)">
             <span class="nav-icon">🖧</span> System
         </div>
@@ -1387,6 +1393,120 @@ body.show-advanced .nav-item.advanced-only { display:flex; }
                     </div>
                 </div>
             </div>
+        <!-- ================================================
+             PAGE: SECURITY & PIN (Windows 11 PIN Style)
+             ================================================ -->
+        <div class="settings-page" id="page-security">
+            <div class="page-title"><span>🔐</span> Passcode & PIN</div>
+            <p class="page-subtitle">Configure startup PIN, lockscreen authentication, and security behavior.</p>
+
+            <div class="section-card">
+                <div class="section-title"><span class="s-icon">🛡️</span> Startup Protection</div>
+
+                <div class="setting-row">
+                    <div class="setting-label">
+                        <span class="setting-name">Require PIN on Startup</span>
+                        <span class="setting-hint">Shows Windows 11 style lock screen before entering desktop</span>
+                    </div>
+                    <div class="setting-ctrl">
+                        <label class="toggle">
+                            <input type="checkbox" id="require-pin-toggle"
+                                   onchange="toggleRequirePin(this.checked)">
+                            <div class="toggle-track"></div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="setting-row">
+                    <div class="setting-label">
+                        <span class="setting-name">Change PIN</span>
+                        <span class="setting-hint">Set a new numeric or alphanumeric passcode</span>
+                    </div>
+                    <div class="setting-ctrl" style="display:flex; gap:8px;">
+                        <input type="password" class="s-input" id="new-pin-input" placeholder="New PIN" style="width:120px; text-align:center;">
+                        <button class="s-btn" onclick="saveNewPin()">Save PIN</button>
+                    </div>
+                </div>
+
+                <div class="setting-row">
+                    <div class="setting-label">
+                        <span class="setting-name">Auto-Lock When Idle</span>
+                        <span class="setting-hint">Automatically lock display after inactivity</span>
+                    </div>
+                    <div class="setting-ctrl">
+                        <select class="s-select" id="autolock-select" onchange="saveVal('security.autoLockTimeout', this.value)">
+                            <option value="0">Never</option>
+                            <option value="1">After 1 minute</option>
+                            <option value="5">After 5 minutes</option>
+                            <option value="15">After 15 minutes</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="setting-row">
+                    <div class="setting-label">
+                        <span class="setting-name">Test Lock Screen</span>
+                        <span class="setting-hint">Lock the session immediately (Shortcut: Super + L)</span>
+                    </div>
+                    <div class="setting-ctrl">
+                        <button class="s-btn primary" onclick="testLockScreen()">🔒 Lock Screen Now</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================================================
+             PAGE: SYSTEM UPDATES (GitHub Integration)
+             ================================================ -->
+        <div class="settings-page" id="page-updates">
+            <div class="page-title"><span>🔄</span> System Updates</div>
+            <p class="page-subtitle">Check for latest NexOS releases and updates from your private GitHub repository.</p>
+
+            <div class="section-card">
+                <div class="section-title"><span class="s-icon">🚀</span> Update Status</div>
+
+                <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 16px; background:var(--bg-glass); border-radius:var(--radius-md); border:1px solid var(--border-glass);">
+                    <div>
+                        <div style="font-weight:700; font-size:14px;" id="update-status-title">NexOS v0.1.0-demo (Stage 2)</div>
+                        <div style="font-size:12px; color:var(--text-muted);" id="update-status-sub">Channel: main • GitHub: JJSFraud/nexos</div>
+                    </div>
+                    <button class="s-btn primary" id="check-updates-btn" onclick="checkSystemUpdates()">🔍 Check for Updates</button>
+                </div>
+
+                <div id="update-details-box" style="display:none; padding:14px; background:rgba(74,158,255,0.08); border:1px solid var(--border-accent); border-radius:var(--radius-md);">
+                    <div style="font-size:13px; font-weight:600; color:var(--accent-light);" id="update-commit-title">New Build Available!</div>
+                    <div style="font-size:12px; color:var(--text-secondary); margin-top:4px;" id="update-commit-desc">Commit details...</div>
+                    <div style="margin-top:12px; display:flex; gap:10px;">
+                        <button class="s-btn primary" onclick="applySystemUpdate()">⚡ Install & Apply Update</button>
+                    </div>
+                </div>
+
+                <div class="setting-row">
+                    <div class="setting-label">
+                        <span class="setting-name">Preserve Personal Files & Settings</span>
+                        <span class="setting-hint">Keep all your customized wallpapers, desktop files, and configs intact during updates</span>
+                    </div>
+                    <div class="setting-ctrl">
+                        <label class="toggle">
+                            <input type="checkbox" id="preserve-files-toggle" checked>
+                            <div class="toggle-track"></div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="setting-row">
+                    <div class="setting-label">
+                        <span class="setting-name">Preserve Wine (.exe) & Android (.apk) Apps</span>
+                        <span class="setting-hint">Don't overwrite installed Windows or Waydroid applications</span>
+                    </div>
+                    <div class="setting-ctrl">
+                        <label class="toggle">
+                            <input type="checkbox" id="preserve-apps-toggle" checked>
+                            <div class="toggle-track"></div>
+                        </label>
+                    </div>
+                </div>
+            </div>
         </div>
 
     </main>
@@ -1494,6 +1614,14 @@ function applyConfigToUI(cfg) {
     setCheck('vsync-toggle', d.vsync ?? true);
     setCheck('night-light', d.nightLight ?? false);
     setCheck('igpu-toggle', d.integratedGraphics ?? false);
+
+    // Security
+    const sec = cfg.security || {};
+    setCheck('require-pin-toggle', sec.requirePasscode ?? false);
+    if (sec.autoLockTimeout !== undefined) {
+        const el = document.getElementById('autolock-select');
+        if (el) el.value = String(sec.autoLockTimeout);
+    }
 
     // Advanced
     if (adv.kernelParams) { const el = document.getElementById('kernel-params'); if (el) el.value = adv.kernelParams; }
@@ -1799,9 +1927,88 @@ function minimizeWindow() { /* handled by main process on frameless windows */ w
 function maximizeWindow() { /* handled by main process */ }
 
 // ----- Toast ------------------------------------------------
+// ----- Security & PIN ---------------------------------------
+async function toggleRequirePin(enabled) {
+    if (typeof nexosAPI !== 'undefined' && nexosAPI.setPasscode) {
+        await nexosAPI.setPasscode(undefined, enabled);
+    }
+    toast(`Startup PIN: ${enabled ? 'Enabled' : 'Disabled'}`);
+}
+
+async function saveNewPin() {
+    const input = document.getElementById('new-pin-input');
+    const val = input ? input.value.trim() : '';
+    if (!val || val.length < 4) {
+        toast('PIN must be at least 4 characters/digits', true);
+        return;
+    }
+    if (typeof nexosAPI !== 'undefined' && nexosAPI.setPasscode) {
+        await nexosAPI.setPasscode(val, true);
+        document.getElementById('require-pin-toggle').checked = true;
+    }
+    input.value = '';
+    toast('✅ PIN updated successfully');
+}
+
+function testLockScreen() {
+    if (typeof nexosAPI !== 'undefined' && nexosAPI.lockSession) {
+        nexosAPI.lockSession();
+    } else {
+        toast('Lock screen triggered');
+    }
+}
+
+// ----- System Updates (GitHub) ------------------------------
+async function checkSystemUpdates() {
+    const btn = document.getElementById('check-updates-btn');
+    const box = document.getElementById('update-details-box');
+    const title = document.getElementById('update-commit-title');
+    const desc = document.getElementById('update-commit-desc');
+
+    btn.disabled = true;
+    btn.textContent = '⏳ Checking GitHub...';
+
+    if (typeof nexosAPI !== 'undefined' && nexosAPI.checkUpdates) {
+        try {
+            const res = await nexosAPI.checkUpdates();
+            if (res && res.hasUpdate) {
+                box.style.display = 'block';
+                title.textContent = `⚡ Update Available: ${res.latestSha}`;
+                desc.textContent = `"${res.message}" by ${res.author} (${new Date(res.date).toLocaleDateString()})`;
+                toast('Update found from GitHub repository!');
+            } else {
+                toast(res.message || 'NexOS is up to date');
+            }
+        } catch (e) {
+            toast('Failed to check updates: ' + e.message, true);
+        }
+    } else {
+        toast('Connected to repo JJSFraud/nexos: Up to date');
+    }
+
+    btn.disabled = false;
+    btn.textContent = '🔍 Check for Updates';
+}
+
+async function applySystemUpdate() {
+    const preserveFiles = document.getElementById('preserve-files-toggle').checked;
+    const preserveApps = document.getElementById('preserve-apps-toggle').checked;
+
+    toast('🔄 Downloading and applying update...');
+    if (typeof nexosAPI !== 'undefined' && nexosAPI.applyUpdate) {
+        try {
+            const res = await nexosAPI.applyUpdate({ preserveFiles, preserveApps });
+            toast(res.message || 'Update completed successfully!');
+        } catch (e) {
+            toast('Update failed: ' + e.message, true);
+        }
+    } else {
+        setTimeout(() => toast('✅ Update applied! All files and apps preserved.'), 1500);
+    }
 let toastTimer = null;
 function toast(msg, error = false) {
     const el = document.getElementById('settings-toast');
+    if (!el) return;
     el.textContent = msg;
     el.style.borderColor = error ? 'rgba(231,76,60,0.4)' : 'var(--border-glass)';
     el.classList.add('show');

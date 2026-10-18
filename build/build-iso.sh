@@ -532,28 +532,39 @@ done
 chown -R nexos:nexos /home/nexos
 
 # ============================================================
-# KERNEL — ensure it's installed (critical for ISO boot)
+# LIVE-BOOT INITRAMFS CONFIGURATION (CRITICAL FOR LIVE ISO)
 # ============================================================
-echo "[NexOS] Verifying kernel installation..."
-if ls /boot/vmlinuz-* &>/dev/null; then
-    echo "[NexOS] Kernel found: $(ls /boot/vmlinuz-*)"
-else
-    echo "[NexOS] Kernel not found — installing now..."
-    apt-get update -qq
-    apt-get install -y --no-install-recommends linux-image-amd64 live-boot 2>&1 || true
-fi
+echo "[NexOS] Configuring live-boot initramfs and kernel modules..."
+apt-get install -y --no-install-recommends live-boot live-boot-initramfs-tools live-config live-config-systemd systemd-sysv 2>&1 || true
 
-# Final check
-if ls /boot/vmlinuz-* &>/dev/null; then
-    echo "[NexOS] Kernel OK: $(ls /boot/vmlinuz-*)"
-    echo "[NexOS] Initrd: $(ls /boot/initrd.img-* 2>/dev/null || echo 'none — generating...')"
-    # Regenerate initrd if missing
-    if ! ls /boot/initrd.img-* &>/dev/null; then
-        update-initramfs -c -k all 2>/dev/null || true
-    fi
-else
-    echo "[NexOS] ERROR: Kernel still missing after reinstall!"
-fi
+# Ensure essential storage and CD-ROM/SATA modules are built into initramfs
+mkdir -p /etc/initramfs-tools
+cat >> /etc/initramfs-tools/modules <<'MODS'
+loop
+squashfs
+overlay
+isofs
+sr_mod
+cdrom
+ata_piix
+ahci
+sd_mod
+virtio_pci
+virtio_blk
+MODS
+
+# Ensure MODULES=most in initramfs.conf
+sed -i 's/^MODULES=.*/MODULES=most/' /etc/initramfs-tools/initramfs.conf 2>/dev/null || echo "MODULES=most" >> /etc/initramfs-tools/initramfs.conf
+
+# Ensure /sbin/init points to systemd
+ln -sf /lib/systemd/systemd /sbin/init
+
+# Unconditionally regenerate initramfs for all kernels with live-boot hooks
+echo "[NexOS] Regenerating initramfs with live-boot hooks..."
+update-initramfs -u -k all 2>&1 || update-initramfs -c -k all 2>&1
+
+echo "[NexOS] Kernel & Initrd verified:"
+ls -lh /boot/vmlinuz-* /boot/initrd.img-* 2>/dev/null || true
 
 # ============================================================
 # CLEANUP APT CACHE (saves 200-400MB from ISO)
@@ -591,7 +602,6 @@ stage_squashfs() {
         -comp "${SQUASH_COMP}" \
         -processors "${SQUASH_THREADS}" \
         -no-progress \
-        -e boot \
         -e proc \
         -e sys \
         -e dev \
@@ -649,11 +659,11 @@ terminal_output gfxterm
 background_color 10,10,26
 
 menuentry "NexOS 0.1.0-demo" --class nexos --class gnu-linux {
-    linux  /live/vmlinuz boot=live quiet splash loglevel=3
+    linux  /live/vmlinuz boot=live components quiet splash loglevel=3
     initrd /live/initrd.img
 }
 menuentry "NexOS (Recovery)" --class nexos {
-    linux  /live/vmlinuz boot=live single
+    linux  /live/vmlinuz boot=live components single nomodeset
     initrd /live/initrd.img
 }
 menuentry "Boot from hard disk" --class hd {

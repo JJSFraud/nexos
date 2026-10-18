@@ -177,6 +177,34 @@ contextBridge.exposeInMainWorld('nexosAPI', {
     },
 
     // ----------------------------------------------------------------
+    // Security & Passcode (Windows 11 PIN style)
+    // ----------------------------------------------------------------
+
+    verifyPasscode(pin) {
+        return invoke('verify-passcode', { pin: String(pin) });
+    },
+
+    setPasscode(pin, enabled) {
+        return invoke('set-passcode', { pin: String(pin), enabled: Boolean(enabled) });
+    },
+
+    lockSession() {
+        return invoke('lock-session');
+    },
+
+    // ----------------------------------------------------------------
+    // Updater (GitHub Integration)
+    // ----------------------------------------------------------------
+
+    checkUpdates() {
+        return invoke('check-updates');
+    },
+
+    applyUpdate(opts = {}) {
+        return invoke('apply-update', opts);
+    },
+
+    // ----------------------------------------------------------------
     // Event listeners (renderer subscribes to main-process events)
     // ----------------------------------------------------------------
 
