@@ -532,6 +532,30 @@ done
 chown -R nexos:nexos /home/nexos
 
 # ============================================================
+# KERNEL — ensure it's installed (critical for ISO boot)
+# ============================================================
+echo "[NexOS] Verifying kernel installation..."
+if ls /boot/vmlinuz-* &>/dev/null; then
+    echo "[NexOS] Kernel found: $(ls /boot/vmlinuz-*)"
+else
+    echo "[NexOS] Kernel not found — installing now..."
+    apt-get update -qq
+    apt-get install -y --no-install-recommends linux-image-amd64 live-boot 2>&1 || true
+fi
+
+# Final check
+if ls /boot/vmlinuz-* &>/dev/null; then
+    echo "[NexOS] Kernel OK: $(ls /boot/vmlinuz-*)"
+    echo "[NexOS] Initrd: $(ls /boot/initrd.img-* 2>/dev/null || echo 'none — generating...')"
+    # Regenerate initrd if missing
+    if ! ls /boot/initrd.img-* &>/dev/null; then
+        update-initramfs -c -k all 2>/dev/null || true
+    fi
+else
+    echo "[NexOS] ERROR: Kernel still missing after reinstall!"
+fi
+
+# ============================================================
 # CLEANUP APT CACHE (saves 200-400MB from ISO)
 # ============================================================
 apt-get clean
@@ -588,10 +612,13 @@ stage_kernel() {
     info "=== STAGE 5: Copying kernel and initrd ==="
     timer_start
 
+    info "Contents of chroot /boot:"
+    ls -la "${CHROOT_DIR}/boot/" 2>/dev/null || echo "(empty)"
+
     KERNEL=$(ls "${CHROOT_DIR}/boot/vmlinuz-"* 2>/dev/null | sort -V | tail -1)
     INITRD=$(ls "${CHROOT_DIR}/boot/initrd.img-"* 2>/dev/null | sort -V | tail -1)
-    [[ -z "$KERNEL" ]] && error "No kernel found in chroot!"
-    [[ -z "$INITRD" ]] && error "No initrd found in chroot!"
+    [[ -z "$KERNEL" ]] && error "No kernel found in chroot! Check build log for kernel install failure."
+    [[ -z "$INITRD" ]] && error "No initrd found in chroot! Run: update-initramfs -c -k all"
 
     cp "$KERNEL" "${ISO_DIR}/live/vmlinuz"
     cp "$INITRD" "${ISO_DIR}/live/initrd.img"
