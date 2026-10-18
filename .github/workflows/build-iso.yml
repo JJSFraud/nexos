@@ -3,7 +3,7 @@ name: Build NexOS ISO
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:   # lets you trigger manually from GitHub website
+  workflow_dispatch:
 
 jobs:
   build:
@@ -33,24 +33,48 @@ jobs:
             git \
             gnupg \
             ca-certificates \
-            apt-transport-https
+            apt-transport-https \
+            binutils
 
       - name: Make scripts executable
-        run: chmod +x build/build-iso.sh build/install-deps.sh scripts/*.sh
+        run: |
+          chmod +x build/build-iso.sh
+          chmod +x build/install-deps.sh
+          chmod +x scripts/*.sh
 
       - name: Build NexOS ISO
         run: sudo bash build/build-iso.sh
         env:
           DEBIAN_FRONTEND: noninteractive
 
+      - name: Show build log on failure
+        if: failure()
+        run: |
+          echo "=== BUILD LOG ==="
+          cat nexos-build/build.log 2>/dev/null || echo "No build log found"
+          echo "=== DISK USAGE ==="
+          df -h
+          echo "=== CHROOT CONTENTS ==="
+          ls -la nexos-build/chroot/ 2>/dev/null || echo "No chroot"
+
       - name: Upload ISO artifact
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: NexOS-demo-iso
           path: NexOS-0.1.0-demo.iso
           retention-days: 7
 
+      - name: Upload build log (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: nexos-build/build.log
+          retention-days: 3
+
       - name: Show ISO info
+        if: success()
         run: |
           echo "ISO size: $(du -sh NexOS-0.1.0-demo.iso | cut -f1)"
-          echo "SHA256: $(sha256sum NexOS-0.1.0-demo.iso)"
+          echo "SHA256:   $(sha256sum NexOS-0.1.0-demo.iso)"

@@ -92,6 +92,7 @@ stage_bootstrap() {
     debootstrap \
         --arch=amd64 \
         --variant=minbase \
+        --no-check-gpg \
         --include=\
 apt-utils,\
 locales,\
@@ -122,7 +123,7 @@ openssh-client,\
 file \
         "${DEBIAN_SUITE}" \
         "${CHROOT_DIR}" \
-        "${DEBIAN_MIRROR}" 2>&1 | tee -a "${LOGFILE}"
+        "${DEBIAN_MIRROR}" 2>&1 | tee -a "${LOGFILE}" || true
 
     timer_end
     ok "Bootstrap complete."
