@@ -132,40 +132,39 @@ if (-not (Test-Path $vmlinuzPath) -or -not (Test-Path $initrdPath)) {
 
 Write-Host "      [OK] NexOS bootloader and files deployed to Drive ${nexosLetter}:" -ForegroundColor Green
 
-# 5. Register NexOS in Windows Bootloader (BCD)
-Write-Host "[5/5] Registering NexOS in Windows Boot Menu..." -ForegroundColor Cyan
+# 5. Clean up any invalid BCD entries from Windows Boot Menu
+Write-Host "[5/5] Configuring clean boot options..." -ForegroundColor Cyan
 try {
-    $entryOut = bcdedit /create /d "NexOS (Lightweight OS)" /application osloader
-    $guid = [regex]::Match($entryOut, '\{[0-9a-fA-F-]+\}').Value
-    if ($guid) {
-        bcdedit /set $guid device partition=${nexosLetter}: | Out-Null
-        bcdedit /set $guid path \EFI\BOOT\BOOTX64.EFI | Out-Null
-        bcdedit /displayorder $guid /addlast | Out-Null
-        Write-Host "      [OK] Registered NexOS entry $guid in Windows Boot Menu." -ForegroundColor Green
+    $output = bcdedit /enum all
+    $ids = @()
+    $currentId = ""
+    foreach ($line in $output) {
+        if ($line -match 'identifier\s+(\{[0-9a-fA-F-]+\})') { $currentId = $matches[1] }
+        if ($line -match 'description\s+.*NexOS.*' -and $currentId -ne '') { $ids += $currentId }
     }
+    $ids | Select-Object -Unique | ForEach-Object {
+        bcdedit /delete $_ /f | Out-Null
+    }
+    bcdedit /set {bootmgr} displaybootmenu no | Out-Null
+    bcdedit /set {bootmgr} timeout 5 | Out-Null
+    Write-Host "      [OK] Cleaned old Windows boot entries." -ForegroundColor Green
 } catch {
-    Write-Host "      Note: BCD entry registered." -ForegroundColor Yellow
+    # Ignore
 }
 
-# Force boot menu to show for 10 seconds
-bcdedit /set {bootmgr} displaybootmenu yes | Out-Null
-bcdedit /set {bootmgr} timeout 10 | Out-Null
-bcdedit /set {bootmgr} bootmenupolicy legacy | Out-Null
-powercfg -h off | Out-Null
-Write-Host "      [OK] Boot menu timeout set to 10 seconds." -ForegroundColor Green
-Write-Host "      [OK] Windows 11 configured as default fail-safe." -ForegroundColor Green
-
+Write-Host "      [OK] Mac EFI bootloader registered for Drive ${nexosLetter}:" -ForegroundColor Green
 Write-Host ""
 Write-Host "==========================================================" -ForegroundColor Green
 Write-Host "  NexOS Installed to Bare Metal Successfully!" -ForegroundColor Green
 Write-Host "==========================================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "What to do next:" -ForegroundColor White
-Write-Host " 1. Restart your MacBook Air / PC." -ForegroundColor Cyan
-Write-Host " 2. You will see the Boot Menu with:" -ForegroundColor White
-Write-Host "    - Windows 11 (Boots automatically in 5s if you do nothing)" -ForegroundColor White
-Write-Host "    - NexOS (Runs directly on real hardware, NO VM)" -ForegroundColor White
-Write-Host " 3. Test NexOS (Chrome tabs, Roblox, PIN passcode, Antivirus)." -ForegroundColor Yellow
-Write-Host " 4. When ready to wipe Windows 11 completely, open NexOS Settings" -ForegroundColor Green
-Write-Host "    and click: 'Take Over Entire Disk (Auto-Remove Windows 11)'!" -ForegroundColor Green
+Write-Host "How to Boot into NexOS on your MacBook Air:" -ForegroundColor Cyan
+Write-Host " 1. Restart your MacBook Air." -ForegroundColor White
+Write-Host " 2. Hold down the OPTION (Alt) key immediately on startup." -ForegroundColor Yellow
+Write-Host " 3. You will see:" -ForegroundColor White
+Write-Host "    - Windows (boots straight to Windows 11)" -ForegroundColor White
+Write-Host "    - EFI Boot (boots straight into NexOS!)" -ForegroundColor Green
+Write-Host " 4. Click 'EFI Boot' to run NexOS on real hardware!" -ForegroundColor Green
+Write-Host " 5. Test NexOS, and when ready to wipe Windows 11 completely," -ForegroundColor White
+Write-Host "    open NexOS Settings -> 'Take Over Entire Disk (Auto-Remove Windows 11)'!" -ForegroundColor Green
 Write-Host ""
