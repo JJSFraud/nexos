@@ -1,36 +1,287 @@
 #!/usr/bin/env python3
 """
 =============================================================================
-Linux Zoner — Graphics & Gaming Performance Optimizer + Phone Link
+Linux Zoner — GPU & Gaming Performance Booster + Phone Link
+All-in-One Standalone Application
 Tuned specifically for Intel HD Graphics 6000 & 2015 MacBook Air (Core i5 / 8GB)
-Includes Zero-APK Phone Companion Server
 =============================================================================
 """
 
 import os
 import sys
+import json
+import socket
 import subprocess
 import threading
 import time
+from http.server import HTTPServer, BaseHTTPRequestHandler
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-CORE_SCRIPT = os.path.join(SCRIPT_DIR, "zoner-core.sh")
-WRAPPER_SCRIPT = os.path.join(SCRIPT_DIR, "launch-game.sh")
+# ---------------------------------------------------------------------------
+# Directories & Bootstrap
+# ---------------------------------------------------------------------------
+INSTALL_DIR = os.path.expanduser("~/.local/share/zoner")
+os.makedirs(INSTALL_DIR, exist_ok=True)
 
-# Import Phone Server
-try:
-    from phone_server import start_server, get_local_ip, telemetry_data, PHONE_PORT
-except ImportError:
-    import sys
-    sys.path.append(SCRIPT_DIR)
-    from phone_server import start_server, get_local_ip, telemetry_data, PHONE_PORT
+CORE_SCRIPT = os.path.join(INSTALL_DIR, "zoner-core.sh")
+WRAPPER_SCRIPT = os.path.join(INSTALL_DIR, "launch-game.sh")
 
-# Dark Theme Colors
+# Self-bootstrap helper scripts if missing
+CORE_SCRIPT_CONTENT = """#!/usr/bin/env bash
+ACTION="${1:-status}"
+GPU_MIN_FREQ="/sys/class/drm/card0/gt_min_freq_mhz"
+GPU_MAX_FREQ="/sys/class/drm/card0/gt_max_freq_mhz"
+GPU_BOOST_FREQ="/sys/class/drm/card0/gt_boost_freq_mhz"
+GPU_CUR_FREQ="/sys/class/drm/card0/gt_cur_freq_mhz"
+
+if [[ "$ACTION" == "enable" || "$ACTION" == "turbo" ]]; then
+    if [[ -f "$GPU_MAX_FREQ" && -f "$GPU_MIN_FREQ" ]]; then
+        MAX=$(cat "$GPU_MAX_FREQ" 2>/dev/null || echo "1000")
+        echo "$MAX" > "$GPU_MIN_FREQ" 2>/dev/null || true
+        echo "$MAX" > "$GPU_BOOST_FREQ" 2>/dev/null || true
+    fi
+    for gov in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
+        [[ -f "$gov" ]] && echo "performance" > "$gov" 2>/dev/null || true
+    done
+    sysctl -w vm.swappiness=10 >/dev/null 2>&1 || true
+    pgrep -x "picom" >/dev/null && killall -STOP picom 2>/dev/null || true
+    mkdir -p ~/.config/environment.d
+    cat << 'EOF' > ~/.config/environment.d/99-zoner.conf
+MESA_LOADER_DRIVER_OVERRIDE=iris
+mesa_glthread=true
+WINE_FULLSCREEN_FSR=1
+WINE_FULLSCREEN_FSR_STRENGTH=2
+vblank_mode=0
+EOF
+elif [[ "$ACTION" == "disable" || "$ACTION" == "balanced" ]]; then
+    [[ -f "$GPU_MIN_FREQ" ]] && echo "300" > "$GPU_MIN_FREQ" 2>/dev/null || true
+    for gov in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
+        [[ -f "$gov" ]] && echo "schedutil" > "$gov" 2>/dev/null || true
+    done
+    pgrep -x "picom" >/dev/null && killall -CONT picom 2>/dev/null || true
+fi
+"""
+
+WRAPPER_SCRIPT_CONTENT = """#!/usr/bin/env bash
+export MESA_LOADER_DRIVER_OVERRIDE="iris"
+export mesa_glthread="true"
+export vblank_mode=0
+export WINE_FULLSCREEN_FSR=1
+export WINE_FULLSCREEN_FSR_STRENGTH=2
+export WINE_FULLSCREEN_FSR_MODE="ultra"
+export DXVK_ASYNC=1
+export DXVK_STATE_CACHE=1
+if command -v gamemoderun &>/dev/null; then
+    exec gamemoderun "$@"
+else
+    exec "$@"
+fi
+"""
+
+if not os.path.exists(CORE_SCRIPT):
+    with open(CORE_SCRIPT, "w") as f:
+        f.write(CORE_SCRIPT_CONTENT)
+    os.chmod(CORE_SCRIPT, 0o755)
+
+if not os.path.exists(WRAPPER_SCRIPT):
+    with open(WRAPPER_SCRIPT, "w") as f:
+        f.write(WRAPPER_SCRIPT_CONTENT)
+    os.chmod(WRAPPER_SCRIPT, 0o755)
+
+# ---------------------------------------------------------------------------
+# Phone Companion Server (Zero-APK Built-in)
+# ---------------------------------------------------------------------------
+PHONE_PORT = 5050
+
+telemetry_data = {
+    "gpu_clock": "1000 MHz",
+    "cpu_gov": "performance",
+    "ram": "2.4 GB / 8.0 GB",
+    "fps_target": "60 FPS",
+    "turbo": True,
+    "fsr_level": 2
+}
+
+def get_local_ip():
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return "127.0.0.1"
+
+def simulate_key(key_name, action="tap"):
+    key_map = {
+        "jump": "space", "sprint": "Shift_L", "interact": "e",
+        "action": "Return", "up": "w", "down": "s", "left": "a", "right": "d"
+    }
+    actual_key = key_map.get(key_name.lower(), key_name)
+    if sys.platform != "win32":
+        if action == "down":
+            subprocess.run(["xdotool", "keydown", actual_key], check=False)
+        elif action == "up":
+            subprocess.run(["xdotool", "keyup", actual_key], check=False)
+        else:
+            subprocess.run(["xdotool", "key", actual_key], check=False)
+
+HTML_PAGE = """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Zoner Phone Link</title>
+<style>
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+    body { background: #0c0d14; color: #fff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+    header { background: #131522; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #23273e; }
+    .title { font-size: 15px; font-weight: 800; color: #00f0ff; }
+    .badge { font-size: 10px; font-weight: 700; background: #00e67622; color: #00e676; padding: 4px 8px; border-radius: 12px; border: 1px solid #00e67655; }
+    .hud-bar { background: #171a2d; padding: 8px 16px; display: flex; justify-content: space-around; font-size: 11px; border-bottom: 1px solid #23273e; }
+    .hud-item { text-align: center; }
+    .hud-val { font-weight: 800; color: #00f0ff; font-size: 13px; }
+    .controller { flex: 1; display: flex; justify-content: space-between; align-items: center; padding: 20px; position: relative; }
+    .dpad { width: 140px; height: 140px; position: relative; }
+    .d-btn { position: absolute; width: 44px; height: 44px; background: #1e2238; border: 1px solid #3d4468; border-radius: 10px; color: #fff; font-size: 18px; font-weight: bold; display: flex; align-items: center; justify-content: center; }
+    .d-btn:active { background: #00f0ff; color: #000; }
+    .d-up { top: 0; left: 48px; } .d-down { bottom: 0; left: 48px; } .d-left { top: 48px; left: 0; } .d-right { top: 48px; right: 0; }
+    .actions { width: 140px; height: 140px; position: relative; }
+    .a-btn { position: absolute; width: 46px; height: 46px; border-radius: 50%; color: #fff; font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.2); }
+    .a-btn:active { transform: scale(0.92); filter: brightness(1.4); }
+    .btn-jump { bottom: 0; left: 47px; background: #00e676; color: #000; box-shadow: 0 0 12px #00e67644; }
+    .btn-sprint { top: 0; left: 47px; background: #ff3366; box-shadow: 0 0 12px #ff336644; }
+    .btn-interact { top: 47px; left: 0; background: #3d84ff; box-shadow: 0 0 12px #3d84ff44; }
+    .btn-action { top: 47px; right: 0; background: #ffb300; color: #000; box-shadow: 0 0 12px #ffb30044; }
+    .boost-bar { background: #111320; padding: 12px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; border-top: 1px solid #23273e; }
+    .boost-btn { background: #1c2035; border: 1px solid #2d3356; color: #fff; font-size: 11px; font-weight: 700; padding: 10px; border-radius: 8px; text-align: center; }
+    .boost-btn:active { background: #00f0ff; color: #000; }
+    .boost-btn.active { border-color: #ff3366; background: #ff336622; color: #ff3366; }
+</style>
+</head>
+<body>
+<header>
+    <div class="title">⚡ ZONER PHONE LINK</div>
+    <div class="badge">● MAC CONNECTED</div>
+</header>
+<div class="hud-bar">
+    <div class="hud-item"><div>INTEL GPU</div><div class="hud-val" id="hud-gpu">1000 MHz</div></div>
+    <div class="hud-item"><div>CPU MODE</div><div class="hud-val" id="hud-cpu">Performance</div></div>
+    <div class="hud-item"><div>TARGET FPS</div><div class="hud-val" id="hud-fps" style="color:#00e676">60 FPS</div></div>
+    <div class="hud-item"><div>RAM</div><div class="hud-val" id="hud-ram">2.4 / 8 GB</div></div>
+</div>
+<div class="controller">
+    <div class="dpad">
+        <div class="d-btn d-up" data-key="up">▲</div>
+        <div class="d-btn d-left" data-key="left">◀</div>
+        <div class="d-btn d-right" data-key="right">▶</div>
+        <div class="d-btn d-down" data-key="down">▼</div>
+    </div>
+    <div class="actions">
+        <div class="a-btn btn-sprint" data-key="sprint">RUN</div>
+        <div class="a-btn btn-interact" data-key="interact">E</div>
+        <div class="a-btn btn-action" data-key="action">ACT</div>
+        <div class="a-btn btn-jump" data-key="jump">JUMP</div>
+    </div>
+</div>
+<div class="boost-bar">
+    <div class="boost-btn active" id="btn-turbo" onclick="toggleTurbo()">🔥 TURBO GPU</div>
+    <div class="boost-btn" onclick="sendBoost('fsr_boost')">✨ FSR SHARPEN</div>
+    <div class="boost-btn" onclick="sendBoost('screenshot')">📸 SCREENSHOT</div>
+</div>
+<script>
+    function vibrate(ms=25) { if (navigator.vibrate) navigator.vibrate(ms); }
+    document.querySelectorAll('[data-key]').forEach(el => {
+        const key = el.getAttribute('data-key');
+        el.addEventListener('touchstart', (e) => { e.preventDefault(); vibrate(20); sendKey(key, 'down'); });
+        el.addEventListener('touchend', (e) => { e.preventDefault(); sendKey(key, 'up'); });
+    });
+    function sendKey(key, action) {
+        fetch('/api/input', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ key, action }) }).catch(()=>{});
+    }
+    function toggleTurbo() {
+        vibrate(40);
+        fetch('/api/boost?action=toggle_turbo', { method: 'POST' })
+            .then(r => r.json())
+            .then(data => {
+                const btn = document.getElementById('btn-turbo');
+                if (data.turbo) { btn.classList.add('active'); btn.textContent = '🔥 TURBO GPU'; }
+                else { btn.classList.remove('active'); btn.textContent = '● BALANCED'; }
+            });
+    }
+    function sendBoost(action) { vibrate(30); fetch('/api/boost?action=' + action, { method: 'POST' }); }
+    setInterval(() => {
+        fetch('/api/status').then(r => r.json()).then(data => {
+            document.getElementById('hud-gpu').textContent = data.gpu_clock;
+            document.getElementById('hud-cpu').textContent = data.cpu_gov;
+            document.getElementById('hud-ram').textContent = data.ram;
+            document.getElementById('hud-fps').textContent = data.fps_target;
+        }).catch(()=>{});
+    }, 1000);
+</script>
+</body>
+</html>
+"""
+
+class PhoneRequestHandler(BaseHTTPRequestHandler):
+    def log_message(self, format, *args):
+        pass
+    def do_GET(self):
+        if self.path in ["/", "/index.html"] or self.path.startswith("/?"):
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(HTML_PAGE.encode("utf-8"))
+        elif self.path == "/api/status":
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps(telemetry_data).encode("utf-8"))
+        else:
+            self.send_response(404)
+            self.end_headers()
+    def do_POST(self):
+        if self.path == "/api/input":
+            length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(length)
+            try:
+                data = json.loads(body.decode("utf-8"))
+                simulate_key(data.get("key"), data.get("action", "tap"))
+            except Exception:
+                pass
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b'{"status":"ok"}')
+        elif self.path.startswith("/api/boost"):
+            query = self.path.split("?")[-1]
+            if "action=toggle_turbo" in query:
+                telemetry_data["turbo"] = not telemetry_data["turbo"]
+                action_str = "enable" if telemetry_data["turbo"] else "disable"
+                subprocess.run(["bash", CORE_SCRIPT, action_str], check=False)
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"turbo": telemetry_data["turbo"]}).encode("utf-8"))
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+def start_phone_server():
+    try:
+        server = HTTPServer(("0.0.0.0", PHONE_PORT), PhoneRequestHandler)
+        t = threading.Thread(target=server.serve_forever, daemon=True)
+        t.start()
+        return True
+    except Exception as e:
+        print(f"[ZONER] Phone server info: {e}")
+        return False
+
+# ---------------------------------------------------------------------------
+# Main GUI Application
+# ---------------------------------------------------------------------------
 BG_MAIN     = "#0c0d14"
 BG_CARD     = "#151724"
-BG_HOVER    = "#1f2238"
 ACCENT_BLUE = "#3d84ff"
 ACCENT_CYAN = "#00f0ff"
 ACCENT_GREEN= "#00e676"
@@ -56,17 +307,11 @@ class ZonerApp:
         self.local_ip = get_local_ip()
         self.phone_url = f"http://{self.local_ip}:{PHONE_PORT}"
 
-        # Start Phone Companion Server in background
-        try:
-            start_server(PHONE_PORT)
-        except Exception as e:
-            print(f"[ZONER] Phone server notice: {e}")
-
+        start_phone_server()
         self.build_ui()
         self.start_monitoring()
 
     def build_ui(self):
-        # 1. Header Banner
         header = tk.Frame(self.root, bg="#10121d", height=75)
         header.pack(fill="x")
         header.pack_propagate(False)
@@ -83,7 +328,6 @@ class ZonerApp:
         self.lbl_badge = tk.Label(header, text="● BALANCED MODE", font=("Segoe UI", 9, "bold"), fg="#ffb300", bg="#2a2310", padx=12, pady=6)
         self.lbl_badge.pack(side="right", padx=20, pady=18)
 
-        # 2. Tab Navigation
         tab_bar = tk.Frame(self.root, bg="#121422", height=42)
         tab_bar.pack(fill="x")
         tab_bar.pack_propagate(False)
@@ -94,19 +338,15 @@ class ZonerApp:
         self.btn_tab_phone = tk.Button(tab_bar, text="📱 Connect Phone (No APK)", font=("Segoe UI", 10, "bold"), bg="#121422", fg=TEXT_MUTED, relief="flat", padx=16, cursor="hand2", command=lambda: self.switch_tab("phone"))
         self.btn_tab_phone.pack(side="left", fill="y")
 
-        # Container for Tab Pages
         self.pages_container = tk.Frame(self.root, bg=BG_MAIN)
         self.pages_container.pack(fill="both", expand=True)
 
-        # TAB 1: GPU & Game Booster Page
         self.page_gpu = tk.Frame(self.pages_container, bg=BG_MAIN)
         self.build_gpu_page(self.page_gpu)
 
-        # TAB 2: Phone Link Page
         self.page_phone = tk.Frame(self.pages_container, bg=BG_MAIN)
         self.build_phone_page(self.page_phone)
 
-        # Show initial tab
         self.switch_tab("gpu")
 
     def switch_tab(self, tab_name):
@@ -121,9 +361,6 @@ class ZonerApp:
             self.btn_tab_phone.config(bg="#1a1e36", fg=ACCENT_CYAN)
             self.btn_tab_gpu.config(bg="#121422", fg=TEXT_MUTED)
 
-    # -----------------------------------------------------------------------
-    # TAB 1: GPU & Graphics Booster Page
-    # -----------------------------------------------------------------------
     def build_gpu_page(self, parent):
         left_col = tk.Frame(parent, bg=BG_MAIN, width=490)
         left_col.pack(side="left", fill="both", expand=True, padx=(0, 10))
@@ -131,7 +368,6 @@ class ZonerApp:
         right_col = tk.Frame(parent, bg=BG_MAIN, width=280)
         right_col.pack(side="right", fill="both", padx=(10, 0))
 
-        # Turbo Button Card
         card_turbo = tk.Frame(left_col, bg=BG_CARD, highlightthickness=1, highlightbackground=BORDER_COL, padx=15, pady=14)
         card_turbo.pack(fill="x", pady=(0, 10))
 
@@ -153,7 +389,6 @@ class ZonerApp:
         lbl_desc = tk.Label(card_turbo, text="Locks Intel HD 6000 to 1000MHz peak clock, sets CPU to Performance,\nand enables low-latency gaming scheduler.", font=("Segoe UI", 8), fg=TEXT_MUTED, bg=BG_CARD)
         lbl_desc.pack(pady=(6, 0))
 
-        # Graphics Card
         card_gfx = tk.Frame(left_col, bg=BG_CARD, highlightthickness=1, highlightbackground=BORDER_COL, padx=15, pady=12)
         card_gfx.pack(fill="x", pady=(0, 10))
 
@@ -172,7 +407,6 @@ class ZonerApp:
         tk.Checkbutton(card_gfx, text="Mesa GL Multithreaded Cache (Stops Stutter)", variable=self.glthread_enabled, bg=BG_CARD, fg=TEXT_WHITE, selectcolor="#000000", activebackground=BG_CARD, activeforeground=TEXT_WHITE, font=("Segoe UI", 9)).pack(anchor="w", pady=2)
         tk.Checkbutton(card_gfx, text="Unlock 60+ FPS (Disable V-Sync limit)", variable=self.unlock_fps, bg=BG_CARD, fg=TEXT_WHITE, selectcolor="#000000", activebackground=BG_CARD, activeforeground=TEXT_WHITE, font=("Segoe UI", 9)).pack(anchor="w", pady=2)
 
-        # Quick Launchers
         card_games = tk.Frame(left_col, bg=BG_CARD, highlightthickness=1, highlightbackground=BORDER_COL, padx=15, pady=12)
         card_games.pack(fill="x")
         tk.Label(card_games, text="🕹️ 1-CLICK LAUNCH WITH ZONER BOOST", font=("Segoe UI", 10, "bold"), fg=ACCENT_CYAN, bg=BG_CARD).pack(anchor="w", pady=(0, 6))
@@ -183,7 +417,6 @@ class ZonerApp:
         tk.Button(btn_row, text="⛏️ Minecraft", font=("Segoe UI", 9, "bold"), bg="#1e2235", fg=TEXT_WHITE, relief="flat", padx=8, pady=6, cursor="hand2", command=self.launch_minecraft).pack(side="left", padx=2, expand=True, fill="x")
         tk.Button(btn_row, text="📂 Launch Game / EXE...", font=("Segoe UI", 9, "bold"), bg="#283250", fg=ACCENT_CYAN, relief="flat", padx=8, pady=6, cursor="hand2", command=self.launch_custom).pack(side="left", padx=(5, 0), expand=True, fill="x")
 
-        # Right Column HUD
         card_hud = tk.Frame(right_col, bg=BG_CARD, highlightthickness=1, highlightbackground=BORDER_COL, padx=15, pady=15)
         card_hud.pack(fill="both", expand=True)
 
@@ -199,18 +432,13 @@ class ZonerApp:
         tk.Label(card_hud, text="HARDWARE PROFILE", font=("Segoe UI", 8, "bold"), fg=TEXT_MUTED, bg=BG_CARD).pack(anchor="w")
         tk.Label(card_hud, text="• MacBook Air 2015\n• Intel Core i5-5250U\n• Intel HD Graphics 6000\n• 8 GB LPDDR3 RAM", font=("Segoe UI", 8), fg=TEXT_MUTED, bg=BG_CARD, justify="left").pack(anchor="w", pady=(3, 0))
 
-    # -----------------------------------------------------------------------
-    # TAB 2: Connect Phone (Zero APK Required)
-    # -----------------------------------------------------------------------
     def build_phone_page(self, parent):
-        # Header Info Card
         card_top = tk.Frame(parent, bg=BG_CARD, highlightthickness=1, highlightbackground=BORDER_COL, padx=20, pady=16)
         card_top.pack(fill="x", pady=(0, 15))
 
         tk.Label(card_top, text="📱 ZERO-APK PHONE COMPANION LINK", font=("Segoe UI", 13, "bold"), fg=ACCENT_CYAN, bg=BG_CARD).pack(anchor="w")
         tk.Label(card_top, text="Your Android phone helps your Mac game without installing any APK!\nUse it as a second-screen live telemetry HUD, a wireless game controller, or quick macro deck.", font=("Segoe UI", 9), fg=TEXT_MUTED, bg=BG_CARD, justify="left").pack(anchor="w", pady=(4, 0))
 
-        # Connection Box Card
         card_conn = tk.Frame(parent, bg=BG_CARD, highlightthickness=1, highlightbackground=BORDER_COL, padx=20, pady=18)
         card_conn.pack(fill="x", pady=(0, 15))
 
@@ -223,7 +451,6 @@ class ZonerApp:
         )
         tk.Label(card_conn, text=steps_text, font=("Segoe UI", 10), fg=TEXT_WHITE, bg=BG_CARD, justify="left").pack(anchor="w", pady=(0, 10))
 
-        # URL Box
         url_frame = tk.Frame(card_conn, bg="#0d0e17", highlightthickness=1, highlightbackground=ACCENT_CYAN, padx=15, pady=10)
         url_frame.pack(fill="x", pady=(0, 10))
 
@@ -233,7 +460,6 @@ class ZonerApp:
         btn_copy = tk.Button(url_frame, text="📋 Copy Address", font=("Segoe UI", 9, "bold"), bg=ACCENT_BLUE, fg=TEXT_WHITE, relief="flat", padx=10, pady=4, cursor="hand2", command=self.copy_url)
         btn_copy.pack(side="right")
 
-        # Feature Highlights Card
         card_feats = tk.Frame(parent, bg=BG_CARD, highlightthickness=1, highlightbackground=BORDER_COL, padx=20, pady=16)
         card_feats.pack(fill="x")
 
@@ -350,7 +576,6 @@ class ZonerApp:
                             total_gb = total / 1024 / 1024
                             ram_text = f"{used_gb:.1f} GB / {total_gb:.0f} GB"
 
-                    # Sync with telemetry for phone companion
                     telemetry_data["gpu_clock"] = gpu_freq
                     telemetry_data["cpu_gov"] = gov
                     telemetry_data["ram"] = ram_text
