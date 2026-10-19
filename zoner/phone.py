@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 =============================================================================
-Zoner Phone Link — Terminal Edition with Auto-Send & Firewall Unblock
+Zoner Phone Link — Terminal Edition with QR Code & ADB Auto-Send
 Connect your Android phone directly from the command line (Zero APK needed).
 =============================================================================
 """
@@ -46,11 +46,21 @@ def get_all_ips():
     return ips or ["127.0.0.1"]
 
 def unblock_firewall():
-    # Allow port 5050 through Linux UFW firewall if active
     try:
         subprocess.run(["sudo", "ufw", "allow", "5050/tcp"], capture_output=True, check=False)
     except Exception:
         pass
+
+def print_qr_code(url):
+    try:
+        res = subprocess.run(["qrencode", "-t", "ANSIUTF8", url], capture_output=True, text=True, timeout=2)
+        if res.returncode == 0 and res.stdout:
+            print(res.stdout)
+            print("  📸 Scan this QR code with your phone camera to open in 1 second!\n")
+            return True
+    except Exception:
+        pass
+    return False
 
 def simulate_key(key_name, action="tap"):
     key_map = {
@@ -268,22 +278,23 @@ def main():
     print("=" * 60)
     print("")
 
+    # Try automatic USB send
     phone_sent = auto_send_to_usb_phone()
     if not phone_sent:
-        print("  CONNECT OPTIONS (Choose whichever you prefer):")
-        print("")
-        print("  Option 1: Over USB Cable (Fastest, zero lag, bypasses Wi-Fi):")
-        print("    1. Plug phone into Mac with USB cable")
-        print("    2. On phone, turn on 'USB Tethering' (Settings -> Network)")
-        print("    3. On phone, open Chrome and type:")
+        primary_url = f"http://{ips[0]}:{PHONE_PORT}"
+        print_qr_code(primary_url)
+        print("  HOW TO CONNECT (Choose Method 1 or Method 2):\n")
+        print("  ⭐ METHOD 1: Scan QR Code with Phone Camera (Easiest!)")
+        print("     Just point your phone camera at the screen above.\n")
+        print("  ⭐ METHOD 2: Direct Chrome Browser URL")
+        print("     Make sure phone is on the same Wi-Fi, open Chrome, and type:")
+        print("     IMPORTANT: Include 'http://' at the start:")
         for ip in ips:
-            if ip.startswith("192.168.42.") or ip.startswith("192.168."):
-                print(f"       👉  \033[1;32mhttp://{ip}:{PHONE_PORT}\033[0m")
+            print(f"     👉  \033[1;32mhttp://{ip}:{PHONE_PORT}\033[0m")
         print("")
-        print("  Option 2: Over Wi-Fi (Both devices on same Wi-Fi network):")
-        print("    Open Chrome on your phone and try:")
-        for ip in ips:
-            print(f"       👉  \033[1;36mhttp://{ip}:{PHONE_PORT}\033[0m")
+        print("  ⭐ METHOD 3: USB Cable / Hotspot (100% Guaranteed)")
+        print("     Turn on 'Mobile Hotspot' or 'USB Tethering' on your phone,")
+        print("     and open http://localhost:5050 on the phone!")
         print("")
 
     print("=" * 60)
