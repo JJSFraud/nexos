@@ -14,9 +14,9 @@ echo "=========================================================="
 echo ""
 
 # 1. Install prerequisites
-echo "[1/4] Installing drivers, GameMode, and graphics libraries..."
+echo "[1/4] Installing drivers, GameMode, xdotool, and graphics libraries..."
 sudo apt update -qq
-sudo apt install -y python3 python3-tk gamemode mesa-utils mesa-vulkan-drivers intel-media-va-driver-non-free
+sudo apt install -y python3 python3-tk gamemode mesa-utils mesa-vulkan-drivers intel-media-va-driver-non-free xdotool
 
 # 2. Make scripts executable
 echo "[2/4] Setting execution permissions..."
