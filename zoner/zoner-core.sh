@@ -31,14 +31,14 @@ enable_gaming_mode() {
     # 2. Set CPU Governor to Performance
     for gov in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
         if [[ -f "$gov" ]]; then
-            echo "performance" > "$gov" 2>/dev/null || true
+            echo "performance" | sudo tee "$gov" >/dev/null 2>&1 || echo "performance" > "$gov" 2>/dev/null || true
         fi
     done
     echo "[ZONER] CPU Governor set to 'performance' for all cores."
 
     # 3. Kernel Memory & Swappiness Optimization
-    sysctl -w vm.swappiness=10 >/dev/null 2>&1 || true
-    sysctl -w vm.vfs_cache_pressure=50 >/dev/null 2>&1 || true
+    sudo sysctl -w vm.swappiness=10 >/dev/null 2>&1 || true
+    sudo sysctl -w vm.vfs_cache_pressure=50 >/dev/null 2>&1 || true
 
     # 4. Suspend Desktop Compositor (stops screen tearing & frees VRAM)
     if pgrep -x "picom" >/dev/null; then
@@ -67,14 +67,14 @@ disable_gaming_mode() {
 
     # 1. Restore dynamic Intel GPU frequency
     if [[ -f "$GPU_MIN_FREQ" ]]; then
-        echo "300" > "$GPU_MIN_FREQ" 2>/dev/null || true
+        echo "300" | sudo tee "$GPU_MIN_FREQ" >/dev/null 2>&1 || echo "300" > "$GPU_MIN_FREQ" 2>/dev/null || true
         echo "[ZONER] Intel GPU dynamic frequency scaling restored."
     fi
 
     # 2. Restore CPU Governor
     for gov in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
         if [[ -f "$gov" ]]; then
-            echo "schedutil" > "$gov" 2>/dev/null || echo "powersave" > "$gov" 2>/dev/null || true
+            echo "schedutil" | sudo tee "$gov" >/dev/null 2>&1 || echo "schedutil" > "$gov" 2>/dev/null || true
         fi
     done
     echo "[ZONER] CPU Governor restored to 'schedutil'."

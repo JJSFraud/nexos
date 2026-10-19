@@ -260,6 +260,15 @@ def auto_send_to_usb_phone():
         pass
     return False
 
+class ReusableHTTPServer(HTTPServer):
+    allow_reuse_address = True
+
+def free_port(port):
+    try:
+        subprocess.run(["fuser", "-k", f"{port}/tcp"], capture_output=True, check=False)
+    except Exception:
+        pass
+
 def main():
     unblock_firewall()
     ips = get_all_ips()
@@ -269,7 +278,17 @@ def main():
 
     threading.Thread(target=update_telemetry, daemon=True).start()
 
-    server = HTTPServer(("0.0.0.0", PHONE_PORT), PhoneRequestHandler)
+    # Free port if held by previous run
+    free_port(PHONE_PORT)
+    time.sleep(0.3)
+
+    try:
+        server = ReusableHTTPServer(("0.0.0.0", PHONE_PORT), PhoneRequestHandler)
+    except OSError:
+        subprocess.run(["fuser", "-k", "-9", f"{PHONE_PORT}/tcp"], capture_output=True, check=False)
+        time.sleep(0.5)
+        server = ReusableHTTPServer(("0.0.0.0", PHONE_PORT), PhoneRequestHandler)
+
     t = threading.Thread(target=server.serve_forever, daemon=True)
     t.start()
 
