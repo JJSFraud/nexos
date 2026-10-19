@@ -221,7 +221,7 @@ class ZonerApp:
             "2. Open Chrome (or any browser) on your Android phone\n"
             "3. Type this web address:"
         )
-        tk.Label(card_conn, text=steps_text, font=("Segoe UI", 9.5), fg=TEXT_WHITE, bg=BG_CARD, justify="left").pack(anchor="w", pady=(0, 10))
+        tk.Label(card_conn, text=steps_text, font=("Segoe UI", 10), fg=TEXT_WHITE, bg=BG_CARD, justify="left").pack(anchor="w", pady=(0, 10))
 
         # URL Box
         url_frame = tk.Frame(card_conn, bg="#0d0e17", highlightthickness=1, highlightbackground=ACCENT_CYAN, padx=15, pady=10)
@@ -251,7 +251,7 @@ class ZonerApp:
         f = tk.Frame(parent, bg="#1a1c2d", padx=12, pady=10)
         f.grid(row=r, column=c, padx=6, pady=6, sticky="nsew")
         parent.grid_columnconfigure(c, weight=1)
-        tk.Label(f, text=title, font=("Segoe UI", 9.5, "bold"), fg=TEXT_WHITE, bg="#1a1c2d").pack(anchor="w")
+        tk.Label(f, text=title, font=("Segoe UI", 10, "bold"), fg=TEXT_WHITE, bg="#1a1c2d").pack(anchor="w")
         tk.Label(f, text=desc, font=("Segoe UI", 8), fg=TEXT_MUTED, bg="#1a1c2d", justify="left").pack(anchor="w", pady=(2, 0))
 
     def copy_url(self):
