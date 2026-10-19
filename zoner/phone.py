@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
 =============================================================================
-Zoner Phone Link — Terminal / CLI Edition (Zero APK, No GUI Required)
-Connect your Android phone directly from the command line.
+Zoner Phone Link — Terminal Edition with Auto-Send to Phone via USB/CMD
+Connect your Android phone directly from the command line (Zero APK needed).
 =============================================================================
 """
 
@@ -16,8 +16,6 @@ import time
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
 PHONE_PORT = 5050
-
-# Intel HD 6000 & Linux Paths
 CORE_SCRIPT = os.path.expanduser("~/.local/share/zoner/zoner-core.sh")
 
 telemetry_data = {
@@ -222,6 +220,24 @@ def update_telemetry():
             pass
         time.sleep(2)
 
+def auto_send_to_usb_phone():
+    """Uses ADB to automatically launch the companion on an Android phone over USB."""
+    try:
+        res = subprocess.run(["adb", "devices"], capture_output=True, text=True, timeout=2)
+        lines = [l for l in res.stdout.strip().splitlines() if "\tdevice" in l]
+        if lines:
+            dev_id = lines[0].split()[0]
+            print(f"  [✓] Android Phone detected via USB: {dev_id}")
+            # Forward port over USB
+            subprocess.run(["adb", "reverse", "tcp:5050", "tcp:5050"], check=False)
+            # Send command directly to phone to open Chrome!
+            subprocess.run(["adb", "shell", "am", "start", "-a", "android.intent.action.VIEW", "-d", "http://localhost:5050"], check=False)
+            print("  🚀 [AUTO-SENT] Companion opened on phone screen via USB!")
+            return True
+    except Exception:
+        pass
+    return False
+
 def main():
     local_ip = get_local_ip()
     phone_url = f"http://{local_ip}:{PHONE_PORT}"
@@ -238,16 +254,19 @@ def main():
 
     # Beautiful Terminal UI
     print("\n" + "=" * 60)
-    print("  📱 ZONER PHONE COMPANION (CLI / NO APK NEEDED)")
+    print("  📱 ZONER PHONE COMPANION (CMD AUTO-SEND)")
     print("=" * 60)
     print("")
-    print("  [1] Make sure your phone is on the same Wi-Fi")
-    print("      (or plug USB cable into Mac & turn on USB Tethering)")
-    print("")
-    print("  [2] Open Chrome on your Android phone and go to:")
-    print("")
-    print(f"      👉  \033[1;32m{phone_url}\033[0m  👈")
-    print("")
+
+    # Try automatic USB send
+    phone_sent = auto_send_to_usb_phone()
+    if not phone_sent:
+        print("  Option A (Direct Wi-Fi / Browser):")
+        print("  Open Chrome on your phone and type:")
+        print(f"  👉  \033[1;32m{phone_url}\033[0m  👈\n")
+        print("  Option B (Plug in USB cable):")
+        print("  Plug phone in via USB to auto-open Chrome via ADB!")
+    
     print("=" * 60)
     print("  🔥 Intel HD 6000 GPU Turbo: LOCKED AT 1000 MHz")
     print("  🎮 Phone Gamepad / D-Pad: ACTIVE (WASD + Space + Shift)")
