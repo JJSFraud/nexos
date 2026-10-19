@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 =============================================================================
-Zoner Phone Link — Terminal Edition with Auto-Send to Phone via USB/CMD
+Zoner Phone Link — Terminal Edition with Auto-Send & Firewall Unblock
 Connect your Android phone directly from the command line (Zero APK needed).
 =============================================================================
 """
@@ -27,15 +27,30 @@ telemetry_data = {
     "fsr_level": 2
 }
 
-def get_local_ip():
+def get_all_ips():
+    ips = []
+    try:
+        res = subprocess.run(["hostname", "-I"], capture_output=True, text=True, timeout=2)
+        ips = [ip.strip() for ip in res.stdout.strip().split() if ip.strip()]
+    except Exception:
+        pass
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(("8.8.8.8", 80))
-        ip = s.getsockname()[0]
+        primary = s.getsockname()[0]
         s.close()
-        return ip
+        if primary not in ips and primary != "127.0.0.1":
+            ips.insert(0, primary)
     except Exception:
-        return "127.0.0.1"
+        pass
+    return ips or ["127.0.0.1"]
+
+def unblock_firewall():
+    # Allow port 5050 through Linux UFW firewall if active
+    try:
+        subprocess.run(["sudo", "ufw", "allow", "5050/tcp"], capture_output=True, check=False)
+    except Exception:
+        pass
 
 def simulate_key(key_name, action="tap"):
     key_map = {
@@ -221,16 +236,13 @@ def update_telemetry():
         time.sleep(2)
 
 def auto_send_to_usb_phone():
-    """Uses ADB to automatically launch the companion on an Android phone over USB."""
     try:
         res = subprocess.run(["adb", "devices"], capture_output=True, text=True, timeout=2)
         lines = [l for l in res.stdout.strip().splitlines() if "\tdevice" in l]
         if lines:
             dev_id = lines[0].split()[0]
             print(f"  [✓] Android Phone detected via USB: {dev_id}")
-            # Forward port over USB
             subprocess.run(["adb", "reverse", "tcp:5050", "tcp:5050"], check=False)
-            # Send command directly to phone to open Chrome!
             subprocess.run(["adb", "shell", "am", "start", "-a", "android.intent.action.VIEW", "-d", "http://localhost:5050"], check=False)
             print("  🚀 [AUTO-SENT] Companion opened on phone screen via USB!")
             return True
@@ -239,10 +251,9 @@ def auto_send_to_usb_phone():
     return False
 
 def main():
-    local_ip = get_local_ip()
-    phone_url = f"http://{local_ip}:{PHONE_PORT}"
+    unblock_firewall()
+    ips = get_all_ips()
 
-    # Auto-activate GPU Turbo in background
     if os.path.exists(CORE_SCRIPT):
         subprocess.run(["bash", CORE_SCRIPT, "enable"], check=False)
 
@@ -252,27 +263,35 @@ def main():
     t = threading.Thread(target=server.serve_forever, daemon=True)
     t.start()
 
-    # Beautiful Terminal UI
     print("\n" + "=" * 60)
-    print("  📱 ZONER PHONE COMPANION (CMD AUTO-SEND)")
+    print("  📱 ZONER PHONE COMPANION (ZERO APK)")
     print("=" * 60)
     print("")
 
-    # Try automatic USB send
     phone_sent = auto_send_to_usb_phone()
     if not phone_sent:
-        print("  Option A (Direct Wi-Fi / Browser):")
-        print("  Open Chrome on your phone and type:")
-        print(f"  👉  \033[1;32m{phone_url}\033[0m  👈\n")
-        print("  Option B (Plug in USB cable):")
-        print("  Plug phone in via USB to auto-open Chrome via ADB!")
-    
+        print("  CONNECT OPTIONS (Choose whichever you prefer):")
+        print("")
+        print("  Option 1: Over USB Cable (Fastest, zero lag, bypasses Wi-Fi):")
+        print("    1. Plug phone into Mac with USB cable")
+        print("    2. On phone, turn on 'USB Tethering' (Settings -> Network)")
+        print("    3. On phone, open Chrome and type:")
+        for ip in ips:
+            if ip.startswith("192.168.42.") or ip.startswith("192.168."):
+                print(f"       👉  \033[1;32mhttp://{ip}:{PHONE_PORT}\033[0m")
+        print("")
+        print("  Option 2: Over Wi-Fi (Both devices on same Wi-Fi network):")
+        print("    Open Chrome on your phone and try:")
+        for ip in ips:
+            print(f"       👉  \033[1;36mhttp://{ip}:{PHONE_PORT}\033[0m")
+        print("")
+
     print("=" * 60)
     print("  🔥 Intel HD 6000 GPU Turbo: LOCKED AT 1000 MHz")
     print("  🎮 Phone Gamepad / D-Pad: ACTIVE (WASD + Space + Shift)")
     print("  📊 Live HUD Second-Screen: STREAMING TO PHONE")
     print("=" * 60)
-    print("\n  [Running in terminal... Press Ctrl + C to exit]")
+    print("\n  [Server is RUNNING on port 5050... Press Ctrl + C to exit]")
 
     try:
         while True:
